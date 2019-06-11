@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import _init_paths
+# import _init_paths
 
 import os
 
@@ -38,9 +38,9 @@ class ExdetDetector(BaseDetector):
       torch.cuda.synchronize()
       forward_time = time.time()
       if self.opt.reg_offset:
-        dets = self.decode(t_heat, l_heat, b_heat, r_heat, c_heat, 
+        dets = self.decode(t_heat, l_heat, b_heat, r_heat, c_heat,
                       output['reg_t'], output['reg_l'],
-                      output['reg_b'], output['reg_r'], 
+                      output['reg_b'], output['reg_r'],
                       K=self.opt.K,
                       scores_thresh=self.opt.scores_thresh,
                       center_thresh=self.opt.center_thresh,
@@ -80,7 +80,7 @@ class ExdetDetector(BaseDetector):
         if detection[i, k, 4] > 0.01:
           # print('detection', detection[i, k, 4], detection[i, k])
           debugger.add_coco_bbox(detection[i, k, :4], detection[i, k, -1],
-                                 detection[i, k, 4], 
+                                 detection[i, k, 4],
                                  img_id='out_{:.1f}'.format(scale))
 
   def post_process(self, dets, meta, scale=1):
@@ -111,7 +111,7 @@ class ExdetDetector(BaseDetector):
       results[j + 1] = results[j + 1][:, 0:5]
 
     scores = np.hstack([
-      results[j][:, -1] 
+      results[j][:, -1]
       for j in range(1, self.num_classes + 1)
     ])
     if len(scores) > self.max_per_image:
