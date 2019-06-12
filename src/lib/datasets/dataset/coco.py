@@ -95,6 +95,11 @@ class COCO(data.Dataset):
     from utils.image import draw_dense_reg
     import math
 
+    def _coco_box_to_bbox(box):
+      bbox = np.array([box[0], box[1], box[0] + box[2], box[1] + box[3]],
+                      dtype=np.float32)
+      return bbox
+
     img_id = self.images[index]
     file_name = self.coco.loadImgs(ids=[img_id])[0]['file_name']
     img_path = os.path.join(self.img_dir, file_name)
@@ -166,7 +171,7 @@ class COCO(data.Dataset):
     gt_det = []
     for k in range(num_objs):
       ann = anns[k]
-      bbox = self._coco_box_to_bbox(ann['bbox'])
+      bbox = _coco_box_to_bbox(ann['bbox'])
       cls_id = int(self.cat_ids[ann['category_id']])
       if flipped:
         bbox[[0, 2]] = width - bbox[[2, 0]] - 1

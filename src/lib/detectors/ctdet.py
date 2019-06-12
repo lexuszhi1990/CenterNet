@@ -20,7 +20,7 @@ from .base_detector import BaseDetector
 class CtdetDetector(BaseDetector):
   def __init__(self, opt):
     super(CtdetDetector, self).__init__(opt)
-  
+
   def process(self, images, return_time=False):
     with torch.no_grad():
       output = self.model(images)[-1]
@@ -34,7 +34,7 @@ class CtdetDetector(BaseDetector):
       torch.cuda.synchronize()
       forward_time = time.time()
       dets = ctdet_decode(hm, wh, reg=reg, K=self.opt.K)
-      
+
     if return_time:
       return output, dets, forward_time
     else:
@@ -80,7 +80,7 @@ class CtdetDetector(BaseDetector):
       for k in range(len(dets[i])):
         if detection[i, k, 4] > self.opt.center_thresh:
           debugger.add_coco_bbox(detection[i, k, :4], detection[i, k, -1],
-                                 detection[i, k, 4], 
+                                 detection[i, k, 4],
                                  img_id='out_pred_{:.1f}'.format(scale))
 
   def show_results(self, debugger, image, results):
@@ -89,4 +89,5 @@ class CtdetDetector(BaseDetector):
       for bbox in results[j]:
         if bbox[4] > self.opt.vis_thresh:
           debugger.add_coco_bbox(bbox[:4], j - 1, bbox[4], img_id='ctdet')
-    debugger.show_all_imgs(pause=self.pause)
+    debugger.save_all_imgs()
+    # debugger.show_all_imgs(pause=self.pause)
