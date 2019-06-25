@@ -6,6 +6,8 @@ pip install -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
 
 docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -it pytorch/pytorch:0.4.1-cuda9-cudnn7-devel-dev bash
 
+docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -it pytorch/pytorch:1.0-cuda10.0-cudnn7-devel bash
+
 
 
 ### train dla
@@ -51,6 +53,8 @@ demo:
 
 ```
 python demo.py ctdet --exp_id coco_res --arch res_18 --demo ../images/33823288584_1d21cf0a26_k.jpg --load_model ../exp/ctdet/coco_res/model_best.pth
+
+python demo.py ctdet --exp_id coco_res --arch res_18 --demo results/input_v1.png --load_model ../exp/ctdet/coco_res/model_best.pth
 ```
 
 
@@ -78,7 +82,8 @@ top, bottom = delta_h//2, delta_h-(delta_h//2)
 left, right = delta_w//2, delta_w-(delta_w//2)
 
 color = [0, 0, 0]
-new_im = cv2.copyMakeBorder(im, top-2, bottom+2, left, right, cv2.BORDER_CONSTANT, value=color)
+new_im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+
 diff=(ori_im - new_im)
 cv2.imwrite('diff.png', diff)
 ```
