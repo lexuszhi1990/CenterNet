@@ -137,7 +137,7 @@ class PoseResNet(nn.Module):
                 nn.Conv2d(256, head_conv,
                   kernel_size=3, padding=1, bias=True),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(head_conv, num_output, 
+                nn.Conv2d(head_conv, num_output,
                   kernel_size=1, stride=1, padding=0))
           else:
             fc = nn.Conv2d(
@@ -261,8 +261,8 @@ class PoseResNet(nn.Module):
             self.load_state_dict(pretrained_state_dict, strict=False)
         else:
             print('=> imagenet pretrained model dose not exist')
-            print('=> please download it first')
-            raise ValueError('imagenet pretrained model does not exist')
+            # print('=> please download it first')
+            # raise ValueError('imagenet pretrained model does not exist')
 
 
 resnet_spec = {18: (BasicBlock, [2, 2, 2, 2]),

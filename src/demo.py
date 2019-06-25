@@ -58,7 +58,6 @@ def pre_process(im_pth, opt):
           'out_height': inp_height // opt.down_ratio,
           'out_width': inp_width // opt.down_ratio}
   ret = {'images': images_, 'image': im_ori, 'meta': meta_}
-  import pdb; pdb.set_trace()
   return ret
 
 def demo(opt):
