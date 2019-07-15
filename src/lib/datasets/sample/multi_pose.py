@@ -63,11 +63,11 @@ class MultiPoseDataset(data.Dataset):
         flipped = True
         img = img[:, ::-1, :]
         c[0] =  width - c[0] - 1
-        
+
 
     trans_input = get_affine_transform(
       c, s, rot, [self.opt.input_res, self.opt.input_res])
-    inp = cv2.warpAffine(img, trans_input, 
+    inp = cv2.warpAffine(img, trans_input,
                          (self.opt.input_res, self.opt.input_res),
                          flags=cv2.INTER_LINEAR)
     inp = (inp.astype(np.float32) / 255.)
@@ -83,9 +83,9 @@ class MultiPoseDataset(data.Dataset):
 
     hm = np.zeros((self.num_classes, output_res, output_res), dtype=np.float32)
     hm_hp = np.zeros((num_joints, output_res, output_res), dtype=np.float32)
-    dense_kps = np.zeros((num_joints, 2, output_res, output_res), 
+    dense_kps = np.zeros((num_joints, 2, output_res, output_res),
                           dtype=np.float32)
-    dense_kps_mask = np.zeros((num_joints, output_res, output_res), 
+    dense_kps_mask = np.zeros((num_joints, output_res, output_res),
                                dtype=np.float32)
     wh = np.zeros((self.max_objs, 2), dtype=np.float32)
     kps = np.zeros((self.max_objs, num_joints * 2), dtype=np.float32)
@@ -117,7 +117,7 @@ class MultiPoseDataset(data.Dataset):
       h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
       if (h > 0 and w > 0) or (rot != 0):
         radius = gaussian_radius((math.ceil(h), math.ceil(w)))
-        radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius)) 
+        radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius))
         ct = np.array(
           [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)
         ct_int = ct.astype(np.int32)
@@ -132,7 +132,7 @@ class MultiPoseDataset(data.Dataset):
 
         hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)))
         hp_radius = self.opt.hm_gauss \
-                    if self.opt.mse_loss else max(0, int(hp_radius)) 
+                    if self.opt.mse_loss else max(0, int(hp_radius))
         for j in range(num_joints):
           if pts[j, 2] > 0:
             pts[j, :2] = affine_transform(pts[j, :2], trans_output_rot)
@@ -146,13 +146,13 @@ class MultiPoseDataset(data.Dataset):
               hp_mask[k * num_joints + j] = 1
               if self.opt.dense_hp:
                 # must be before draw center hm gaussian
-                draw_dense_reg(dense_kps[j], hm[cls_id], ct_int, 
+                draw_dense_reg(dense_kps[j], hm[cls_id], ct_int,
                                pts[j, :2] - ct_int, radius, is_offset=True)
                 draw_gaussian(dense_kps_mask[j], ct_int, radius)
               draw_gaussian(hm_hp[j], pt_int, hp_radius)
         draw_gaussian(hm[cls_id], ct_int, radius)
-        gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
-                       ct[0] + w / 2, ct[1] + h / 2, 1] + 
+        gt_det.append([ct[0] - w / 2, ct[1] - h / 2,
+                       ct[0] + w / 2, ct[1] + h / 2, 1] +
                        pts[:, :2].reshape(num_joints * 2).tolist() + [cls_id])
     if rot != 0:
       hm = hm * 0 + 0.9999
