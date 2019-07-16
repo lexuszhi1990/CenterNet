@@ -5,4 +5,3 @@ progress
 matplotlib
 easydict
 scipy
-pycocotools

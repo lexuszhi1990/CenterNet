@@ -6,7 +6,20 @@ pip install -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
 
 docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -it pytorch/pytorch:0.4.1-cuda9-cudnn7-devel-dev bash
 
-docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -it pytorch/pytorch:1.0-cuda10.0-cudnn7-devel bash
+
+
+
+docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-devel-centernet bash
+
+### train squeezenet
+
+python main.py multi_pose --exp_id squeezenet_1x --dataset coco_hp --arch squeeze --batch_size 16 --lr 1e-3 --gpus 1 --num_workers 2 --down_ratio 2
+
+python main.py multi_pose --exp_id squeezenet_1x --dataset coco_hp --arch squeeze --batch_size 16 --lr 1.25e-4 --gpus 1 --num_workers 2 --down_ratio 4 --debug 4
+
+python demo.py multi_pose --demo example.jpg --arch squeeze --load_model ../exp/multi_pose/squeezenet_1x/model_best.pth --gpus 2 --vis_thresh 0.1
+
+python run_ckpt_onnx.py multi_pose --demo example.jpg --arch squeeze --load_model ../exp/multi_pose/squeezenet_1x/model_best.pth --gpus -1
 
 
 
@@ -22,6 +35,8 @@ CUDA_VISIBLE_DEVICES=1 python -m tests.demo_test
 CUDA_VISIBLE_DEVICES=3 python tests/dataset_test.py
 
 
+CUDA_VISIBLE_DEVICES=1 python test.py multi_pose --exp_id hg --dataset coco_hp --arch hourglass --keep_res --load_model ../models/multi_pose_hg_3x.pth --flip_test
+CUDA_VISIBLE_DEVICES=1 python test.py multi_pose --exp_id dla --keep_res --load_model ../models/multi_pose_dla_3x.pth --flip_test
 
 
 ### train ctdet
@@ -87,3 +102,47 @@ new_im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, v
 diff=(ori_im - new_im)
 cv2.imwrite('diff.png', diff)
 ```
+
+
+### hourglass net for kp
+
+python test.py multi_pose --exp_id hg --dataset coco_hp --arch hourglass --keep_res --load_model ../models/multi_pose_hg_3x.pth --flip_test --gpus 1
+
+tot 0.180s (0.170s) |load 0.000s (0.000s) |pre 0.001s (0.001s) |net 0.165s (0.152s) |dec 0.006s (0.008s) |post 0.008s (0.009s)
+
+Evaluate annotation type *keypoints*
+DONE (t=15.27s).
+Accumulating evaluation results...
+DONE (t=0.83s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.640
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.856
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.702
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.594
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.721
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.709
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.901
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.767
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.644
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.802
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=33.94s).
+Accumulating evaluation results...
+DONE (t=5.84s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.474
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.628
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.531
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.139
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.676
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.776
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.191
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.497
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.534
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.154
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.742
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.851
+
+python demo.py multi_pose --demo example.jpg --load_model ../models/multi_pose_hg_3x.pth --arch hourglass --gpus 2
+
+python run_ckpt_onnx.py multi_pose --demo example.jpg --load_model ../models/multi_pose_hg_3x.pth --arch hourglass --gpus -1
+

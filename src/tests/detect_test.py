@@ -41,6 +41,8 @@ def pre_process(im_path, mean, std, desired_size=512, down_ratio=4):
     c = np.array([width / 2., height / 2.], dtype=np.float32)
     s = max(height, width) * 1.0
 
+
+
     resized_img = resize_img(image, desired_size)
     # (Pdb) aaa=cv2.imread('results/input_v1.png')
     # (Pdb) aaa.shape

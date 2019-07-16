@@ -35,20 +35,49 @@ class MultiPoseDetector(BaseDetector):
       hp_offset = output['hp_offset'] if self.opt.reg_hp_offset else None
       torch.cuda.synchronize()
       forward_time = time.time()
-      
+
       if self.opt.flip_test:
         output['hm'] = (output['hm'][0:1] + flip_tensor(output['hm'][1:2])) / 2
         output['wh'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
-        output['hps'] = (output['hps'][0:1] + 
+        output['hps'] = (output['hps'][0:1] +
           flip_lr_off(output['hps'][1:2], self.flip_idx)) / 2
         hm_hp = (hm_hp[0:1] + flip_lr(hm_hp[1:2], self.flip_idx)) / 2 \
                 if hm_hp is not None else None
         reg = reg[0:1] if reg is not None else None
         hp_offset = hp_offset[0:1] if hp_offset is not None else None
-      
-      dets = multi_pose_decode(
-        output['hm'], output['wh'], output['hps'],
-        reg=reg, hm_hp=hm_hp, hp_offset=hp_offset, K=self.opt.K)
+
+      dets = multi_pose_decode(output['hm'], output['wh'], output['hps'], reg=reg, hm_hp=hm_hp, hp_offset=hp_offset, K=self.opt.K)
+
+    if return_time:
+      return output, dets, forward_time
+    else:
+      return output, dets
+
+  def process_dev(self, images, return_time=False):
+    with torch.no_grad():
+      torch.cuda.synchronize()
+      output = self.model(images)[-1]
+      output['hm'] = output['hm'].sigmoid_()
+      if self.opt.hm_hp and not self.opt.mse_loss:
+        output['hm_hp'] = output['hm_hp'].sigmoid_()
+
+      reg = output['reg'] if self.opt.reg_offset else None
+      hm_hp = output['hm_hp'] if self.opt.hm_hp else None
+      hp_offset = output['hp_offset'] if self.opt.reg_hp_offset else None
+      torch.cuda.synchronize()
+      forward_time = time.time()
+      dets = multi_pose_decode(output['hm'], output['wh'], output['hps'], reg=reg, hm_hp=hm_hp, hp_offset=hp_offset, K=self.opt.K)
+
+      import pdb; pdb.set_trace()
+
+      output = torch.cat([self.model.hm, self.model.wh, self.model.hps, self.model.reg, self.model.hm_hp, self.model.hp_offset], 1)
+      dets_torch = multi_pose_decode_dev(self.model.hm, self.model.wh, self.model.hps, self.model.reg, self.model.hm_hp, self.model.hp_offset)
+
+
+      input_names = ["data"]
+      output_names = [ "outputs"]
+      torch.onnx.export(torch_model, dummy_input, "squeezenet.onnx", verbose=True, input_names=input_names, output_names=output_names)
+
 
     if return_time:
       return output, dets, forward_time
@@ -62,7 +91,6 @@ class MultiPoseDetector(BaseDetector):
       meta['out_height'], meta['out_width'])
     for j in range(1, self.num_classes + 1):
       dets[0][j] = np.array(dets[0][j], dtype=np.float32).reshape(-1, 39)
-      # import pdb; pdb.set_trace()
       dets[0][j][:, :4] /= scale
       dets[0][j][:, 5:] /= scale
     return dets[0]
@@ -89,11 +117,12 @@ class MultiPoseDetector(BaseDetector):
       pred = debugger.gen_colormap_hp(
         output['hm_hp'][0].detach().cpu().numpy())
       debugger.add_blend_img(img, pred, 'pred_hmhp')
-  
+
   def show_results(self, debugger, image, results):
     debugger.add_img(image, img_id='multi_pose')
     for bbox in results[1]:
       if bbox[4] > self.opt.vis_thresh:
         debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
         debugger.add_coco_hp(bbox[5:39], img_id='multi_pose')
-    debugger.show_all_imgs(pause=self.pause)
+    debugger.save_all_imgs()
+    # debugger.show_all_imgs(pause=self.pause)
