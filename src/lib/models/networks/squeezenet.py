@@ -166,14 +166,14 @@ class PoseSqueezeNet(nn.Module):
     def forward(self, x):
         x = self.base_model(x)
         x = self.deconv_layers(x)
-        ret = {}
-        for head in self.heads:
-            ret[head] = self.__getattr__(head)(x)
-        return [ret]
-        # ret = []
+        # ret = {}
         # for head in self.heads:
-        #     ret.append(self.__getattr__(head)(x))
-        # return torch.cat(ret, 1)
+        #     ret[head] = self.__getattr__(head)(x)
+        # return [ret]
+        ret = []
+        for head in self.heads:
+            ret.append(self.__getattr__(head)(x))
+        return torch.cat(ret, 1)
 
     def init_weights(self, pretrained=True):
         for _, m in self.deconv_layers.named_modules():
@@ -386,27 +386,31 @@ if __name__ == '__main__':
     heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2, 'hm_hp': 17, 'hp_offset': 2}
     head_conv = 64
     batch_size = 1
-    dummy_input = torch.randn(batch_size, 3, 256, 256)
+    # dummy_input = torch.randn(batch_size, 3, 256, 256)
 
-    full_model = PoseSqueezeFullNet(heads, head_conv=head_conv)
-    full_model.eval()
-    torch_outputs = full_model(dummy_input)
-    import pdb; pdb.set_trace()
+    import cv2
+    image = cv2.imread('example.jpg')
+    inp_image = cv2.resize(image, (512, 512)).astype(np.float32)
+    images = inp_image.transpose(2, 0, 1).reshape(1, 3, 512, 512)
 
-    input_names = ["data"]
-    output_names = [ "outputs"]
-    torch.onnx.export(full_model, dummy_input, "squeezenet.onnx", verbose=True, input_names=input_names, output_names=output_names)
+    # full_model = PoseSqueezeFullNet(heads, head_conv=head_conv)
+    # full_model.eval()
+    # torch_outputs = full_model(dummy_input)
+    # import pdb; pdb.set_trace()
+
+    # input_names = ["data"]
+    # output_names = [ "outputs"]
+    # torch.onnx.export(full_model, dummy_input, "squeezenet.onnx", verbose=True, input_names=input_names, output_names=output_names)
 
     torch_model = get_squeeze_pose_net(heads, head_conv, pretrained=False)
     torch_model.eval()
-    torch_outputs = torch_model(dummy_input)
+    torch_outputs = torch_model(torch.from_numpy(images))
 
     # from torch.autograd import Variable
     # dummy_input_var = Variable(dummy_input, requires_grad=True)
     input_names = ["data"]
     output_names = [ "outputs"]
-    torch.onnx.export(torch_model, dummy_input, "squeezenet.onnx", verbose=True, input_names=input_names, output_names=output_names)
-
+    torch.onnx.export(torch_model, torch.from_numpy(images), "squeezenet.onnx", verbose=True, input_names=input_names, output_names=output_names)
 
     import onnx
     # Load the ONNX model
@@ -418,7 +422,7 @@ if __name__ == '__main__':
 
     import onnxruntime
     session = onnxruntime.InferenceSession("squeezenet.onnx")
-    ximg = dummy_input.numpy()
+    ximg = images
     print("The model expects input shape: ", session.get_inputs()[0].shape)
     print("The shape of the Image is: ", ximg.shape)
     input_name = session.get_inputs()[0].name
