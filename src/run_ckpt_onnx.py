@@ -52,12 +52,72 @@ def pre_process(im_path, mean, std, desired_size=512, down_ratio=4):
     inp_image = ((resized_img / 255. - mean) / std).astype(np.float32)
     inp_image = cv2.resize(image, (512, 512)).astype(np.float32)
     images = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
-    # images = torch.from_numpy(images)
+    images = resized_img.astype(np.float32).transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
     meta = {'c': c, 's': s,
             'out_height': inp_height // down_ratio,
             'out_width': inp_width // down_ratio}
 
     return images, meta
+
+def build(opt):
+    if opt.gpus[0] >= 0:
+        opt.device = torch.device('cuda')
+    else:
+        opt.device = torch.device('cpu')
+
+    print('Creating model...')
+    model = create_model(opt.arch, opt.heads, opt.head_conv)
+    model.deploy = True
+    model = load_model(model, opt.load_model)
+    model = model.to(opt.device)
+    model.eval()
+
+    inputs, meta = pre_process(opt.demo, opt.mean, opt.std)
+    output = model(torch.from_numpy(inputs))
+
+    torch.onnx.export(model, torch.from_numpy(inputs), "example.onnx", verbose=False, input_names=["data"], output_names=["output"])
+
+    import os; os.system('python3 -m onnxsim example.onnx example-sim.onnx')
+
+    import onnx
+    onnx_model = onnx.load("example.onnx")
+    onnx.checker.check_model(onnx_model)
+    print(onnx.helper.printable_graph(onnx_model.graph))
+
+    import onnxruntime
+    session = onnxruntime.InferenceSession("example.onnx")
+    input_name = session.get_inputs()[0].name
+    label_name = session.get_outputs()[0].name
+    result = session.run(None, {input_name: inputs})
+
+
+    print([result[0][0][0].argmax() / 128, result[0][0][0].argmax() % 128, result[0][0][0].max()])
+    print("mean correlation error is : %f" % np.mean(output.detach().cpu().numpy() - result[0]))
+    print("max correlation error is : %f" % np.max(output.detach().cpu().numpy() - result[0]))
+
+    import pdb; pdb.set_trace()
+
+
+if __name__ == '__main__':
+
+    opt = opts().init()
+    build(opt)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def _nms(heat, kernel=3):
     pad = (kernel - 1) // 2
