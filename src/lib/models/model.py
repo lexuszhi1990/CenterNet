@@ -2,23 +2,25 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import torchvision.models as models
+# import torchvision.models as models
 import torch
 import torch.nn as nn
 import os
 
 from .networks.msra_resnet import get_pose_net
 from .networks.dlav0 import get_pose_net as get_dlav0
-from .networks.pose_dla_dcn import get_pose_net as get_dla_dcn
-from .networks.resnet_dcn import get_pose_net as get_pose_net_dcn
+# from .networks.pose_dla_dcn import get_pose_net as get_dla_dcn
+# from .networks.resnet_dcn import get_pose_net as get_pose_net_dcn
 from .networks.large_hourglass import get_large_hourglass_net
+from .networks.squeezenet import get_squeeze_pose_net
 
 _model_factory = {
   'res': get_pose_net, # default Resnet with deconv
   'dlav0': get_dlav0, # default DLAup
-  'dla': get_dla_dcn,
-  'resdcn': get_pose_net_dcn,
+  # 'dla': get_dla_dcn,
+  # 'resdcn': get_pose_net_dcn,
   'hourglass': get_large_hourglass_net,
+  'squeeze': get_squeeze_pose_net,
 }
 
 def create_model(arch, heads, head_conv):
@@ -28,14 +30,14 @@ def create_model(arch, heads, head_conv):
   model = get_model(num_layers=num_layers, heads=heads, head_conv=head_conv)
   return model
 
-def load_model(model, model_path, optimizer=None, resume=False, 
+def load_model(model, model_path, optimizer=None, resume=False,
                lr=None, lr_step=None):
   start_epoch = 0
   checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
   print('loaded {}, epoch {}'.format(model_path, checkpoint['epoch']))
   state_dict_ = checkpoint['state_dict']
   state_dict = {}
-  
+
   # convert data_parallal to model
   for k in state_dict_:
     if k.startswith('module') and not k.startswith('module_list'):

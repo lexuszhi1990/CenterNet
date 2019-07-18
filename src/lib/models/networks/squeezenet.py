@@ -7,6 +7,12 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+import torch.utils.model_zoo as model_zoo
+
+model_urls = {
+    'squeezenet1_0': 'https://download.pytorch.org/models/squeezenet1_0-a815701f.pth',
+    'squeezenet1_1': 'https://download.pytorch.org/models/squeezenet1_1-f364aa15.pth',
+}
 
 BN_MOMENTUM = 0.1
 
@@ -65,37 +71,49 @@ class PoseSqueezeNet(nn.Module):
             [4, 4],
         )
 
-        num_output = sum(heads.values())
-        self.fc = nn.Sequential(
-            nn.Conv2d(256, head_conv, kernel_size=3, padding=1, bias=True),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(head_conv, num_output, kernel_size=1, stride=1, padding=0)
-        )
+        for head in sorted(self.heads):
+            num_output = self.heads[head]
+            fc = nn.Sequential(
+                nn.Conv2d(256, head_conv,
+                  kernel_size=3, padding=1, bias=True),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(head_conv, num_output,
+                  kernel_size=1, stride=1, padding=0))
+            self.__setattr__(head, fc)
 
     def forward(self, x):
         x = self.base_model(x)
         x = self.deconv_layers(x)
-        output = self.fc(x)
+
+        ret = {}
+        for head in self.heads:
+            ret[head] = self.__getattr__(head)(x)
 
         if self.deploy:
-            return output
+            return torch.cat([ret['hm'], ret['wh'], ret['hps'], ret['reg']], dim=1)
         else:
-            # ret = {}
-            # ret['hm'] = output[:, 0:1, :, :]
-            # ret['wh'] = output[:, 1:3, :, :]
-            # ret['kps'] = output[:, 3:37, :, :]
-            # ret['reg'] = output[:, 37:39, :, :]
-            # ret['hm_hp'] = output[:, 39:56, :, :]
-            # ret['hp_offset'] = output[:, 56:58, :, :]
+            return [ret]
 
-            result = {}
-            start = 0
-            for key,value in self.heads.items():
-                end = start + value
-                result[key] = output[:, start:end, :, :]
-                print("{} {}:{}".format(key, start, end))
-                start = end
-            return [result]
+        # else:
+        #     # ret = {}
+        #     # ret['hm'] = output[:, 0:1, :, :]
+        #     # ret['wh'] = output[:, 1:3, :, :]
+        #     # ret['kps'] = output[:, 3:37, :, :]
+        #     # ret['reg'] = output[:, 37:39, :, :]
+        #     # ret['hm_hp'] = output[:, 39:56, :, :]
+        #     # ret['hp_offset'] = output[:, 56:58, :, :]
+
+        #     result = {}
+        #     start = 0
+        #     for key,value in self.heads.items():
+        #         end = start + value
+        #         import pdb; pdb.set_trace()
+        #         indices = torch.tensor(range(start, end))
+        #         torch.index_select(output, dim=1, indices)
+        #         result[key] = output[:, start:end, :, :]
+        #         print("{} {}:{}".format(key, start, end))
+        #         start = end
+        #     return [result]
 
     def init_weights(self, pretrained=True):
         for _, m in self.named_modules():
@@ -117,11 +135,8 @@ class PoseSqueezeNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
         if pretrained:
-            # url = model_urls['squeezenet1_1']
-            url = 'squeezenet1_1-f364aa15.pth'
-            print('=> loading pretrained model {}'.format(url))
-            self.load_state_dict(torch.load(url), strict=False)
-
+            # model.load_state_dict(torch.load('squeezenet1_1-f364aa15.pth', map_location=lambda storage, loc: storage))
+            self.load_state_dict(model_zoo.load_url(model_urls['squeezenet1_1']), strict=False)
 
     def _get_deconv_cfg(self, deconv_kernel, index):
         if deconv_kernel == 4:
@@ -165,13 +180,19 @@ class PoseSqueezeNet(nn.Module):
         return nn.Sequential(*layers)
 
 
+def get_squeeze_pose_net(heads, head_conv, num_layers=0, deploy=False, pretrained=True):
+    model = PoseSqueezeNet(heads, head_conv, deploy=deploy)
+    model.init_weights(pretrained)
+
+    return model
+
 if __name__ == '__main__':
     heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2, 'hm_hp': 17, 'hp_offset': 2}
     head_conv = 64
     batch_size = 1
 
     model = PoseSqueezeNet(heads, head_conv, deploy=True)
-    model.init_weights(False)
+    model.init_weights(True)
     model.eval()
 
     import cv2
