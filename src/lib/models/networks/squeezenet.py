@@ -16,6 +16,23 @@ model_urls = {
 
 BN_MOMENTUM = 0.1
 
+
+def get_gauss_kernel(kernlen=5, nsig=3, channels=1):
+    import numpy as np
+    import scipy.stats as st
+
+    interval = (2*nsig+1.)/(kernlen)
+    x = np.linspace(-nsig-interval/2., nsig+interval/2., kernlen+1)
+    kern1d = np.diff(st.norm.cdf(x))
+    kernel_raw = np.sqrt(np.outer(kern1d, kern1d))
+    kernel = kernel_raw/kernel_raw.sum()
+    out_filter = np.array(kernel, dtype = np.float32)
+    out_filter = out_filter.reshape((kernlen, kernlen, 1, 1))
+    out_filter = np.repeat(out_filter, channels, axis = 2)
+    return out_filter
+
+
+
 class Fire(nn.Module):
 
     def __init__(self, inplanes, squeeze_planes,
@@ -44,6 +61,8 @@ class PoseSqueezeNet(nn.Module):
         self.deconv_with_bias = False
         self.heads = heads
         self.deploy = deploy
+        self.gaussian_filter_size = 5
+        self.gaussian_filter_padding = int((self.gaussian_filter_size - 1) / 2)
         super(PoseSqueezeNet, self).__init__()
 
         self.base_model = nn.Sequential(
@@ -71,6 +90,8 @@ class PoseSqueezeNet(nn.Module):
             [4, 4],
         )
 
+        self.gassuian_filter = nn.Conv2d(1, 1, (self.gaussian_filter_size, self.gaussian_filter_size), padding=(self.gaussian_filter_padding, self.gaussian_filter_padding), bias=False)
+
         for head in sorted(self.heads):
             num_output = self.heads[head]
             fc = nn.Sequential(
@@ -90,7 +111,12 @@ class PoseSqueezeNet(nn.Module):
             ret[head] = self.__getattr__(head)(x)
 
         if self.deploy:
-            return torch.cat([ret['hm'], ret['wh'], ret['hps'], ret['reg']], dim=1)
+            hm = ret['hm'].sigmoid_()
+            hm = self.gassuian_filter(hm)
+            # hmax = nn.functional.max_pool2d(hm, (3, 3), stride=1, padding=1)
+            # keep = torch.le(hmax, hm)
+            # hm = hm * keep.float()
+            return torch.cat([hm, ret['wh'], ret['hps'], ret['reg']], dim=1)
         else:
             return [ret]
 
@@ -137,6 +163,8 @@ class PoseSqueezeNet(nn.Module):
         if pretrained:
             # model.load_state_dict(torch.load('squeezenet1_1-f364aa15.pth', map_location=lambda storage, loc: storage))
             self.load_state_dict(model_zoo.load_url(model_urls['squeezenet1_1']), strict=False)
+
+        self.gassuian_filter.weight.data.copy_(torch.from_numpy(get_gauss_kernel(self.gaussian_filter_size, 3, 1).transpose(2, 3, 0, 1)))
 
     def _get_deconv_cfg(self, deconv_kernel, index):
         if deconv_kernel == 4:
