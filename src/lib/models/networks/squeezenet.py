@@ -29,8 +29,7 @@ def get_gauss_kernel(kernlen=5, nsig=3, channels=1):
     out_filter = np.array(kernel, dtype = np.float32)
     out_filter = out_filter.reshape((kernlen, kernlen, 1, 1))
     out_filter = np.repeat(out_filter, channels, axis = 2)
-    return out_filter
-
+    return out_filter.astype(np.float32)
 
 
 class Fire(nn.Module):
@@ -56,8 +55,8 @@ class Fire(nn.Module):
         ], 1)
 
 class PoseSqueezeNet(nn.Module):
-    def __init__(self, heads, head_conv=64, deploy=False, **kwargs):
-        self.inplanes = 512
+    def __init__(self, heads, head_conv=64, deploy=False, multi_exp=1.0, **kwargs):
+        self.head_conv = head_conv
         self.deconv_with_bias = False
         self.heads = heads
         self.deploy = deploy
@@ -65,28 +64,40 @@ class PoseSqueezeNet(nn.Module):
         self.gaussian_filter_padding = int((self.gaussian_filter_size - 1) / 2)
         super(PoseSqueezeNet, self).__init__()
 
+        scale = lambda x: int(x * multi_exp)
+
         self.base_model = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.Conv2d(3, scale(64), kernel_size=3, stride=2, padding=1, bias=False),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=False, padding=1),
-            Fire(64, 16, 64, 64),
-            Fire(128, 16, 64, 64),
+            Fire(scale(64), scale(16), scale(64), scale(64)),
+            Fire(scale(128), scale(16), scale(64), scale(64)),
             nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=False, padding=1),
-            Fire(128, 32, 128, 128),
-            Fire(256, 32, 128, 128),
+            Fire(scale(128), scale(32), scale(128), scale(128)),
+            Fire(scale(256), scale(32), scale(128), scale(128)),
             nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=False, padding=1),
-            Fire(256, 48, 192, 192),
-            Fire(384, 48, 192, 192),
-            Fire(384, 64, 256, 256),
-            Fire(512, 64, 256, 256),
+            Fire(scale(256), scale(48), 192, 192),
+            Fire(scale(384), scale(48), 192, 192),
+            Fire(scale(384), scale(64), scale(256), scale(256)),
+            Fire(scale(512), scale(64), scale(256), scale(256)),
         )
+        self.inplanes = 512
+        self.conv_compress = nn.Conv2d(scale(512), head_conv, 1, 1, 0, bias=False)
 
-        # self.deconv_layers = nn.PixelShuffle(2)
-        # self.deconv_layers = nn.Upsample(scale_factor=2)
+        # self.deconv_layers = nn.PixelShuffle(4)
+        # self.deconv_layers = nn.Sequential(
+        #     nn.PixelShuffle(2),
+        #     nn.PixelShuffle(2)
+        # )
+
+        # self.deconv_layers = nn.Sequential(
+        #     nn.Upsample(scale_factor=2, mode='nearest'),
+        #     nn.Upsample(scale_factor=2, mode='nearest')
+        # )
 
         self.deconv_layers = self._make_deconv_layer(
             2,
-            [512, 256],
+            [head_conv, head_conv],
             [4, 4],
         )
 
@@ -95,15 +106,15 @@ class PoseSqueezeNet(nn.Module):
         for head in sorted(self.heads):
             num_output = self.heads[head]
             fc = nn.Sequential(
-                nn.Conv2d(256, head_conv,
-                  kernel_size=3, padding=1, bias=True),
-                nn.ReLU(inplace=True),
+                # nn.Conv2d(head_conv, head_conv, kernel_size=3, padding=1, bias=True),
+                # nn.ReLU(inplace=True),
                 nn.Conv2d(head_conv, num_output,
                   kernel_size=1, stride=1, padding=0))
             self.__setattr__(head, fc)
 
     def forward(self, x):
         x = self.base_model(x)
+        x = self.conv_compress(x)
         x = self.deconv_layers(x)
 
         ret = {}
@@ -112,7 +123,7 @@ class PoseSqueezeNet(nn.Module):
 
         if self.deploy:
             hm = ret['hm'].sigmoid_()
-            hm = self.gassuian_filter(hm)
+            # hm = self.gassuian_filter(hm)
             # hmax = nn.functional.max_pool2d(hm, (3, 3), stride=1, padding=1)
             # keep = torch.le(hmax, hm)
             # hm = hm * keep.float()
@@ -193,7 +204,7 @@ class PoseSqueezeNet(nn.Module):
             planes = num_filters[i]
             layers.append(
                 nn.ConvTranspose2d(
-                    in_channels=self.inplanes,
+                    in_channels=self.head_conv,
                     out_channels=planes,
                     kernel_size=kernel,
                     stride=2,
@@ -201,8 +212,8 @@ class PoseSqueezeNet(nn.Module):
                     output_padding=output_padding,
                     bias=self.deconv_with_bias,
                     groups=planes))
-            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
-            layers.append(nn.ReLU(inplace=True))
+            # layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
+            # layers.append(nn.ReLU(inplace=True))
             self.inplanes = planes
 
         return nn.Sequential(*layers)
@@ -215,9 +226,11 @@ def get_squeeze_pose_net(heads, head_conv, num_layers=0, deploy=False, pretraine
     return model
 
 if __name__ == '__main__':
-    heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2, 'hm_hp': 17, 'hp_offset': 2}
+    # heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2, 'hm_hp': 17, 'hp_offset': 2}
+    heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2}
     head_conv = 64
     batch_size = 1
+    input_w, input_h = 224, 224
 
     model = PoseSqueezeNet(heads, head_conv, deploy=True)
     model.init_weights(True)
@@ -225,11 +238,11 @@ if __name__ == '__main__':
 
     import cv2
     image = cv2.imread('example.jpg')
-    inp_image = cv2.resize(image, (512, 512)).astype(np.float32)
-    images = inp_image.transpose(2, 0, 1).reshape(1, 3, 512, 512)
+    inp_image = cv2.resize(image, (input_w, input_h)).astype(np.float32)
+    images = inp_image.transpose(2, 0, 1).reshape(1, 3, input_h, input_w)
 
-    torch.onnx.export(model, torch.from_numpy(images), "example.onnx", verbose=True, input_names=["data"], output_names=[ "outputs"])
     torch_outputs = model(torch.from_numpy(images))
+    torch.onnx.export(model, torch.from_numpy(images), "example.onnx", verbose=True, input_names=["data"], output_names=[ "output"])
 
     import onnx
     # Load the ONNX model
@@ -249,6 +262,8 @@ if __name__ == '__main__':
     result = session.run(None, {input_name: ximg})
     print(torch_outputs[0, 0, 0, :10].detach().numpy())
     print(result[0][0, 0, 0, :10])
+
+    import os; os.system('python3 -m onnxsim example.onnx example-sim.onnx')
 
     # model size 3.5M
     import pdb; pdb.set_trace()
