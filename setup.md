@@ -10,6 +10,8 @@ docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v
 
 docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -v /home/fulingzhi/ncnn-dev:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-devel-centernet bash
 
+docker run --rm --runtime nvidia --ipc host -v /mnt/data-4t/workspace/david/CenterNet:/app -v /mnt/data-4t/coco/cocoapi:/app/data/coco -v /mnt/data-4t/workspace/david/ncnn:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-runtime-centernet bash
+
 ### example cmd
 
 python -m lib.models.networks.squeezenet
@@ -168,3 +170,8 @@ android:
     network               : 1177ms
     network + post_process: 1371ms
 ```
+
+
+### test new dataset load
+
+python run_ckpt_onnx.py multi_pose --demo example.jpg --arch squeeze --load_model ../exp/multi_pose/squeeze_new_1x/model_best.pth --gpus -1
