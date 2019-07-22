@@ -245,11 +245,8 @@ if __name__ == '__main__':
     torch.onnx.export(model, torch.from_numpy(images), "example.onnx", verbose=True, input_names=["data"], output_names=[ "output"])
 
     import onnx
-    # Load the ONNX model
     onnx_model = onnx.load("example.onnx")
-    # Check that the IR is well formed
     onnx.checker.check_model(onnx_model)
-    # Print a human readable representation of the graph
     print(onnx.helper.printable_graph(onnx_model.graph))
 
     import onnxruntime
