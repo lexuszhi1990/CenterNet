@@ -8,7 +8,7 @@ pip install -i https://mirrors.aliyun.com/pypi/simple/ onnx onnx-simplifier pyco
 
 docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -v /home/fulingzhi/ncnn-dev:/ncnn -w /app -it pytorch/pytorch:nightly-runtime-cuda10.0-cudnn7-centernet bash
 
-docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -v /home/fulingzhi/ncnn-dev:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-devel-centernet bash
+docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -v /ml/dataset/ai_challenger:/app/data/ai_challenger -v /home/fulingzhi/ncnn-dev:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-devel-centernet bash
 
 docker run --rm --runtime nvidia --ipc host -v /mnt/data-4t/workspace/david/CenterNet:/app -v /mnt/data-4t/coco/cocoapi:/app/data/coco -v /mnt/data-4t/workspace/david/ncnn:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-runtime-centernet bash
 
@@ -133,7 +133,7 @@ ncnn2mem example.param example.bin example.id.h example.mem.h
 train:
 python main.py multi_pose --exp_id squeeze_new_1x --arch squeeze --dataset coco_hp --batch_size 32  --lr 5e-4 --gpus 2 --num_workers 2 --down_ratio 4 --lr_step 60,90
 
-python test.py multi_pose --exp_id squeeze_new_1x --dataset coco_hp --arch squeeze --keep_res --load_model ../models/multi_pose_hg_3x.pth --flip_test --gpus 2
+python test.py multi_pose --exp_id squeezenet_1x --dataset coco_hp --arch squeeze --keep_res --load_model ../exp/multi_pose/squeezenet_1x/model_best.pth --flip_test --gpus 2
 
 python run_ckpt_onnx.py multi_pose --demo example.jpg --arch squeeze --load_model ../exp/multi_pose/squeeze_new_1x/model_best.pth --gpus -1
 
@@ -174,4 +174,4 @@ android:
 
 ### test new dataset load
 
-python run_ckpt_onnx.py multi_pose --demo example.jpg --arch squeeze --load_model ../exp/multi_pose/squeeze_new_1x/model_best.pth --gpus -1
+python -m lib.datasets.coco_kp multi_pose --arch squeeze

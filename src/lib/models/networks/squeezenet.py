@@ -76,12 +76,12 @@ class PoseSqueezeNet(nn.Module):
             Fire(scale(128), scale(32), scale(128), scale(128)),
             Fire(scale(256), scale(32), scale(128), scale(128)),
             nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=False, padding=1),
-            Fire(scale(256), scale(48), 192, 192),
-            Fire(scale(384), scale(48), 192, 192),
+            Fire(scale(256), scale(48), scale(192), scale(192)),
+            Fire(scale(384), scale(48), scale(192), scale(192)),
             Fire(scale(384), scale(64), scale(256), scale(256)),
             Fire(scale(512), scale(64), scale(256), scale(256)),
         )
-        self.inplanes = 512
+        self.inplanes = scale(512)
         self.conv_compress = nn.Conv2d(scale(512), head_conv, 1, 1, 0, bias=False)
 
         # self.deconv_layers = nn.PixelShuffle(4)
@@ -96,9 +96,9 @@ class PoseSqueezeNet(nn.Module):
         # )
 
         self.deconv_layers = self._make_deconv_layer(
-            2,
-            [head_conv, head_conv],
-            [4, 4],
+            3,
+            [head_conv, head_conv, head_conv],
+            [4, 4, 4],
         )
 
         self.gassuian_filter = nn.Conv2d(1, 1, (self.gaussian_filter_size, self.gaussian_filter_size), padding=(self.gaussian_filter_padding, self.gaussian_filter_padding), bias=False)
@@ -230,9 +230,9 @@ if __name__ == '__main__':
     heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2}
     head_conv = 64
     batch_size = 1
-    input_w, input_h = 224, 224
+    input_w, input_h = 256, 256
 
-    model = PoseSqueezeNet(heads, head_conv, deploy=True)
+    model = PoseSqueezeNet(heads, head_conv, multi_exp=0.5, deploy=True)
     model.init_weights(True)
     model.eval()
 
