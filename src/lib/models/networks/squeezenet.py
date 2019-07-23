@@ -232,7 +232,7 @@ if __name__ == '__main__':
     batch_size = 1
     input_w, input_h = 256, 256
 
-    model = PoseSqueezeNet(heads, head_conv, multi_exp=0.5, deploy=True)
+    model = PoseSqueezeNet(heads, head_conv, multi_exp=1.0, deploy=True)
     model.init_weights(True)
     model.eval()
 
