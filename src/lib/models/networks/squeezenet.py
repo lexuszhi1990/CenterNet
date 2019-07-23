@@ -89,7 +89,6 @@ class PoseSqueezeNet(nn.Module):
         #     nn.PixelShuffle(2),
         #     nn.PixelShuffle(2)
         # )
-
         # self.deconv_layers = nn.Sequential(
         #     nn.Upsample(scale_factor=2, mode='nearest'),
         #     nn.Upsample(scale_factor=2, mode='nearest')
@@ -212,27 +211,29 @@ class PoseSqueezeNet(nn.Module):
                     output_padding=output_padding,
                     bias=self.deconv_with_bias,
                     groups=planes))
-            # layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
-            # layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
+            layers.append(nn.ReLU(inplace=True))
             self.inplanes = planes
 
         return nn.Sequential(*layers)
 
 
-def get_squeeze_pose_net(heads, head_conv, num_layers=0, deploy=False, pretrained=True):
-    model = PoseSqueezeNet(heads, head_conv, deploy=deploy)
+def get_squeeze_pose_net(heads, head_conv, multi_exp=0.50, num_layers=0, deploy=False, pretrained=False):
+    model = PoseSqueezeNet(heads, head_conv, multi_exp=multi_exp, deploy=deploy)
     model.init_weights(pretrained)
 
     return model
 
 if __name__ == '__main__':
-    # heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2, 'hm_hp': 17, 'hp_offset': 2}
-    heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2}
+    # usage: python -m lib.models.networks.squeezenet
+
+    heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2, 'hm_hp': 17, 'hp_offset': 2}
+    # heads = {'hm': 1, 'wh': 2, 'hps': 34, 'reg': 2}
     head_conv = 64
     batch_size = 1
-    input_w, input_h = 256, 256
+    input_w, input_h = 192, 256
 
-    model = PoseSqueezeNet(heads, head_conv, multi_exp=1.0, deploy=True)
+    model = PoseSqueezeNet(heads, head_conv, multi_exp=0.50, deploy=True)
     model.init_weights(True)
     model.eval()
 

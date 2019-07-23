@@ -25,7 +25,7 @@ class AIChallengeKp(data.Dataset):
 
     num_classes = 1
     num_joints = 14
-    default_resolution = [224, 224] # width height
+    default_resolution = [192, 256] # width height
     mean = np.array([0, 0, 0], dtype=np.float32).reshape(1, 1, 3)
     std  = np.array([1, 1, 1], dtype=np.float32).reshape(1, 1, 3)
     flip_idx = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13]]
@@ -60,7 +60,7 @@ class AIChallengeKp(data.Dataset):
         print('Loaded {} {} samples'.format(split, self.num_samples))
 
         if self.debug:
-            for idx in range(1000):
+            for idx in range(20, 30):
                 self.get_anno(idx)
 
     def get_anno(self, index):
@@ -81,7 +81,10 @@ class AIChallengeKp(data.Dataset):
 
         height, width = img.shape[0], img.shape[1]
         center = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
-        max_length = max(img.shape[0], img.shape[1]) * 1.0
+        # max_length = int(min(img.shape[0], img.shape[1]) * 1.1)
+        # max_length = (img.shape[0] + img.shape[1]) // 2
+        # max_length = int(abs(height - width) * 0.5 + min(height, width))
+        max_length = int(abs(height - width) * 0.3 + min(height, width))
         rot = 90 if height < width else 0
 
         if np.random.random() < 0.5:
@@ -93,7 +96,7 @@ class AIChallengeKp(data.Dataset):
             img = img[:, ::-1, :]
             center[0] =  width - center[0] - 1
 
-        trans_input = get_affine_transform(center, max_length, rot, self.default_resolution)
+        trans_input = get_affine_transform(center, max_length, rot, [self.default_resolution[0], self.default_resolution[1]])
         inp_ori = cv2.warpAffine(img, trans_input, (self.default_resolution[0], self.default_resolution[1]), flags=cv2.INTER_LINEAR)
         if self.debug:
             cv2.imwrite('demo_imgs/ai_challenge_kp_input_ori_{}.png'.format(index), inp_ori)
@@ -135,14 +138,18 @@ class AIChallengeKp(data.Dataset):
                     pts[e[0]], pts[e[1]] = pts[e[1]].copy(), pts[e[0]].copy()
             bbox[:2] = affine_transform(bbox[:2], trans_output_rot)
             bbox[2:] = affine_transform(bbox[2:], trans_output_rot)
+            bbox[0::2] = np.clip(bbox[0::2], 0, output_w - 1)
+            bbox[1::2] = np.clip(bbox[1::2], 0, output_h - 1)
             h, w = abs(bbox[3] - bbox[1]), abs(bbox[2] - bbox[0])
 
             if self.debug:
-                bbox_ = (bbox * self.down_ratio).astype(np.int32)
+                bbox_ = (bbox).astype(np.int32) * self.down_ratio
                 cv2.rectangle(inp_ori, (bbox_[0], bbox_[1]), (bbox_[2], bbox_[3]), (255, 0, 0), 2)
+                if index == 5:
+                    import pdb; pdb.set_trace()
                 # cv2.imwrite('demo_imgs/ai_challenge_kp_bbox_{}.png'.format(index), inp_ori)
 
-            radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+            radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.5)
             radius = max(0, int(radius))
             ct = np.array([(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)
             ct_int = ct.astype(np.int32)
@@ -155,13 +162,13 @@ class AIChallengeKp(data.Dataset):
                 hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
                 reg_mask[k] = 0
 
-            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.85)
             hp_radius = max(0, int(hp_radius))
             for j in range(num_joints):
                 if pts[j, 2] > 0:
                     pts[j, :2] = affine_transform(pts[j, :2], trans_output_rot)
-                    if pts[j, 0] >= 0 and pts[j, 0] < output_res and \
-                       pts[j, 1] >= 0 and pts[j, 1] < output_res:
+                    if pts[j, 0] >= 0 and pts[j, 0] < output_w and \
+                       pts[j, 1] >= 0 and pts[j, 1] < output_h:
                         kps[k, j * 2: j * 2 + 2] = pts[j, :2] - ct_int
                         kps_mask[k, j * 2: j * 2 + 2] = 1
                         pt_int = pts[j, :2].astype(np.int32)
