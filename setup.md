@@ -50,7 +50,6 @@ https://github.com/protocolbuffers/protobuf/blob/master/src/README.md
 
 1. ctdet res_18
 
-
 ```
 train:
 python main.py ctdet --arch res_18 --head_conv 64 --exp_id coco_res --batch_size 32 --master_batch 15 --lr 1.25e-4  --gpus 1
@@ -76,7 +75,6 @@ demo:
 python demo.py ctdet --exp_id coco_res --arch res_18 --demo ../images/33823288584_1d21cf0a26_k.jpg --load_model ../exp/ctdet/coco_res/model_best.pth
 python demo.py ctdet --exp_id coco_res --arch res_18 --demo results/input_v1.png --load_model ../exp/ctdet/coco_res/model_best.pth
 ```
-
 
 2. kp hourglass net
 
@@ -130,6 +128,8 @@ python3 -m onnxsim example.onnx example-sim.onnx
 onnx2ncnn example-sim.onnx example.param example.bin
 ncnn2mem example.param example.bin example.id.h example.mem.h
 
+cp /app/src/example-sim.onnx . && ../tools/onnx/onnx2ncnn example-sim.onnx example.param example.bin && ../tools/ncnn2mem example.param example.bin example.id.h example.mem.h
+
 train:
 python main.py multi_pose --exp_id squeeze_new_1x --arch squeeze --dataset coco_hp --batch_size 32  --lr 5e-4 --gpus 2 --num_workers 2 --down_ratio 4 --lr_step 60,90
 
@@ -165,11 +165,14 @@ DONE (t=9.49s).
  Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.509
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.614
 
-
 android:
     network               : 1177ms
     network + post_process: 1371ms
 ```
+
+python main.py multi_pose --exp_id squeeze_0.5_coco --arch squeeze --dataset coco_hp --batch_size 64  --lr 5e-3 --num_workers 2 --input_res 224 --down_ratio 2 --lr_step 30,60,90 --gpus 3 --debug 4
+
+python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge --arch squeeze --dataset ai_challenge --batch_size 64  --lr 5e-3 --num_workers 2 --input_res 224 --down_ratio 2 --lr_step 30,60,90 --gpus 3
 
 
 ### test new dataset load

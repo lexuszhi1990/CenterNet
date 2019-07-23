@@ -12,6 +12,7 @@ from .dataset.pascal import PascalVOC
 from .dataset.kitti import KITTI
 from .dataset.coco_hp import COCOHP
 
+from .ai_challenger_kp import AIChallengeKp
 
 dataset_factory = {
   'coco': COCO,
@@ -29,7 +30,11 @@ _sample_factory = {
 
 
 def get_dataset(dataset, task):
+
+  if task == 'ai_challenge' and dataset == 'ai_challenge':
+    return AIChallengeKp
+
   class Dataset(dataset_factory[dataset], _sample_factory[task]):
     pass
   return Dataset
-  
+

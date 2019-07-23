@@ -25,7 +25,7 @@ class AIChallengeKp(data.Dataset):
 
     num_classes = 1
     num_joints = 14
-    default_resolution = [192, 192] # width height
+    default_resolution = [224, 224] # width height
     mean = np.array([0, 0, 0], dtype=np.float32).reshape(1, 1, 3)
     std  = np.array([1, 1, 1], dtype=np.float32).reshape(1, 1, 3)
     flip_idx = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13]]
@@ -59,8 +59,9 @@ class AIChallengeKp(data.Dataset):
         self.num_samples = len(self.images)
         print('Loaded {} {} samples'.format(split, self.num_samples))
 
-        for idx in range(1000):
-            self.get_anno(idx)
+        if self.debug:
+            for idx in range(1000):
+                self.get_anno(idx)
 
     def get_anno(self, index):
         img_id = self.images[index]
@@ -85,14 +86,12 @@ class AIChallengeKp(data.Dataset):
 
         if np.random.random() < 0.5:
             rot += int((np.random.random() - 0.5) * 10)
-            print('rotated...')
 
         flipped = False
         if np.random.random() < 0.5:
             flipped = True
             img = img[:, ::-1, :]
             center[0] =  width - center[0] - 1
-            print('flipped...')
 
         trans_input = get_affine_transform(center, max_length, rot, self.default_resolution)
         inp_ori = cv2.warpAffine(img, trans_input, (self.default_resolution[0], self.default_resolution[1]), flags=cv2.INTER_LINEAR)

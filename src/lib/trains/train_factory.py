@@ -8,8 +8,9 @@ from .exdet import ExdetTrainer
 from .multi_pose import MultiPoseTrainer
 
 train_factory = {
-  'exdet': ExdetTrainer, 
+  'exdet': ExdetTrainer,
   'ddd': DddTrainer,
   'ctdet': CtdetTrainer,
-  'multi_pose': MultiPoseTrainer, 
+  'multi_pose': MultiPoseTrainer,
+  'ai_challenge': MultiPoseTrainer,
 }
