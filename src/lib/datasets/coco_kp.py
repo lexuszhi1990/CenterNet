@@ -17,8 +17,6 @@ from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
 from utils.image import draw_dense_reg
 import torch.utils.data as data
 
-np.random.seed(None)
-
 class COCOKP(data.Dataset):
   num_classes = 1
   num_joints = 17
@@ -206,13 +204,16 @@ class COCOKP(data.Dataset):
                 draw_gaussian(dense_kps_mask[j], ct_int, radius)
               draw_gaussian(hm_hp[j], pt_int, hp_radius)
 
+        kp_gausian = cv2.addWeighted(cv2.resize(inp_ori, (128, 128)).astype(np.float32), 0.5, np.repeat(hm_hp.sum(axis=0).reshape(128, 128, 1), 3, axis=2)*255, 0.5, 0)
+        cv2.imwrite('coco_kp_kp_gaussian.png', kp_gausian)
+
         draw_gaussian(hm[cls_id], ct_int, radius)
         gt_det.append([ct[0] - w / 2, ct[1] - h / 2,
                        ct[0] + w / 2, ct[1] + h / 2, 1] +
                        pts[:, :2].reshape(num_joints * 2).tolist() + [cls_id])
 
     cv2.imwrite('coco_kp_bbox.png', inp_ori)
-    bbox_gausian = cv2.addWeighted(cv2.resize(inp_ori, (128, 128)).astype(np.float32), 0.5, np.repeat(hm_hp.sum(axis=0).reshape(128, 128, 1), 3, axis=2)*32, 0.5, 0)
+    bbox_gausian = cv2.addWeighted(cv2.resize(inp_ori, (128, 128)).astype(np.float32), 0.5, np.repeat(hm.sum(axis=0).reshape(128, 128, 1), 3, axis=2)*255, 0.5, 0)
     cv2.imwrite('coco_kp_bbox_gaussian.png', bbox_gausian)
     cv2.imwrite('coco_kp_bbox.png', inp_ori)
     import pdb; pdb.set_trace()
@@ -442,6 +443,9 @@ class COCOKP(data.Dataset):
 
 
 if __name__ == '__main__':
+
+
+    # usage: python -m lib.datasets.coco_kp multi_pose --arch squeeze --aug_rot 0.5 --rotate 90
     from opts import opts
     opt = opts().init()
 
