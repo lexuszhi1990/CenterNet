@@ -13,4 +13,5 @@ train_factory = {
   'ctdet': CtdetTrainer,
   'multi_pose': MultiPoseTrainer,
   'ai_challenge': MultiPoseTrainer,
+  'ai_challenge_hp': MultiPoseTrainer,
 }

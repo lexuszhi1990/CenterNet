@@ -10,7 +10,7 @@ docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v
 
 docker run --rm --runtime nvidia --ipc host -v /home/fulingzhi/CenterNet:/app -v /ml/dataset/coco:/app/data/coco -v /ml/dataset/ai_challenger:/app/data/ai_challenger -v /home/fulingzhi/ncnn-dev:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-devel-centernet bash
 
-docker run --rm --runtime nvidia --ipc host -v /mnt/data-4t/workspace/david/CenterNet:/app -v /mnt/data-4t/coco/cocoapi:/app/data/coco -v /mnt/data-4t/workspace/david/ncnn:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-runtime-centernet bash
+docker run --rm --runtime nvidia --ipc host -v /mnt/data-4t/workspace/david/CenterNet:/app -v /mnt/data-4t/coco/cocoapi:/app/data/coco -v /mnt/data-4t/ai_challenger_person_keypoints:/app/data/ai_challenger -v /mnt/data-4t/workspace/david/ncnn:/ncnn -w /app -it pytorch/pytorch:1.0-cuda10.0-cudnn7-runtime-centernet bash
 
 ### example cmd
 
@@ -174,6 +174,9 @@ python main.py multi_pose --exp_id squeeze_0.5_coco --arch squeeze --dataset coc
 
 python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge --arch squeeze --dataset ai_challenge --batch_size 64  --lr 5e-3 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --lr_step 30,60,90 --gpus 3
 
+python main.py ai_challenge_hp --exp_id squeeze_0.5_ai_challenge_hp --arch squeeze --dataset ai_challenge_hp --batch_size 128  --lr 5e-3 --num_workers 16 --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --lr_step 30,60,90 --gpus 1
+
+python demo.py ai_challenge_hp --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --load_model ../models/multi_pose_hg_3x.pth --arch squeeze --demo example.png --gpus 0
 
 ### test new dataset load
 

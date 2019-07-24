@@ -13,6 +13,7 @@ from .dataset.kitti import KITTI
 from .dataset.coco_hp import COCOHP
 
 from .ai_challenger_kp import AIChallengeKp
+from .ai_challenger_kp_ori import AIChallengeKpOri
 
 dataset_factory = {
   'coco': COCO,
@@ -31,8 +32,11 @@ _sample_factory = {
 
 def get_dataset(dataset, task):
 
-  if task == 'ai_challenge' and dataset == 'ai_challenge':
+  if task == 'ai_challenge':
     return AIChallengeKp
+
+  if task == 'ai_challenge_hp':
+    return AIChallengeKpOri
 
   class Dataset(dataset_factory[dataset], _sample_factory[task]):
     pass
