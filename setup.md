@@ -181,6 +181,10 @@ python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_v1 --arch squeezev
 
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge/model_best.pth --gpus -1 --demo ../images/example-test.png
 
+
+ffmpeg -i test1.mp4 -r 30 -f image2 ../images/videos/test1/image-%4d.png
+ffmpeg -i ../images/videos/test1/image-%4d.png -vf "fps=30" -pix_fmt yuv420p result1.mp4
+
 ### test new dataset load
 
 python -m lib.datasets.coco_kp multi_pose --arch squeeze
