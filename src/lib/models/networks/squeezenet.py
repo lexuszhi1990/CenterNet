@@ -211,15 +211,165 @@ class PoseSqueezeNet(nn.Module):
                     output_padding=output_padding,
                     bias=self.deconv_with_bias,
                     groups=planes))
-            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
+            # layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
+            # layers.append(nn.ReLU(inplace=True))
+            self.inplanes = planes
+
+        return nn.Sequential(*layers)
+
+
+class PoseSqueezeNetV1(nn.Module):
+    def __init__(self, heads, head_conv=64, deploy=False, multi_exp=1.0, **kwargs):
+        self.head_conv = head_conv
+        self.deconv_with_bias = False
+        self.heads = heads
+        self.deploy = deploy
+        self.gaussian_filter_size = 5
+        self.gaussian_filter_padding = int((self.gaussian_filter_size - 1) / 2)
+        super(PoseSqueezeNetV1, self).__init__()
+
+        scale = lambda x: int(x * multi_exp)
+
+        self.base_model = nn.Sequential(
+            nn.Conv2d(3, scale(64), kernel_size=3, stride=2, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=False, padding=1),
+            Fire(scale(64), scale(16), scale(64), scale(64)),
+            Fire(scale(128), scale(16), scale(64), scale(64)),
+            nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=False, padding=1),
+            Fire(scale(128), scale(32), scale(128), scale(128)),
+            Fire(scale(256), scale(32), scale(128), scale(128)),
+            nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=False, padding=1),
+            Fire(scale(256), scale(48), scale(192), scale(192)),
+            Fire(scale(384), scale(48), scale(192), scale(192)),
+            Fire(scale(384), scale(64), scale(256), scale(256)),
+            Fire(scale(512), scale(64), scale(256), scale(256)),
+        )
+        self.inplanes = scale(512)
+        self.conv_compress = nn.Conv2d(scale(512), head_conv*4, 1, 1, 0, bias=False)
+
+        # self.deconv_layers = nn.PixelShuffle(4)
+        # self.deconv_layers = nn.Sequential(
+        #     nn.PixelShuffle(2),
+        #     nn.PixelShuffle(2)
+        # )
+        # self.deconv_layers = nn.Sequential(
+        #     nn.Upsample(scale_factor=2, mode='nearest'),
+        #     nn.Upsample(scale_factor=2, mode='nearest')
+        # )
+
+        self.deconv_layers = self._make_deconv_layer(
+            3,
+            [head_conv*4, head_conv*4, head_conv*2],
+            [4, 4, 4],
+        )
+
+        self.gassuian_filter = nn.Conv2d(1, 1, (self.gaussian_filter_size, self.gaussian_filter_size), padding=(self.gaussian_filter_padding, self.gaussian_filter_padding), bias=False)
+
+        for head in sorted(self.heads):
+            num_output = self.heads[head]
+            fc = nn.Sequential(
+                nn.Conv2d(head_conv*2, head_conv*2, kernel_size=3, padding=1, bias=True),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(head_conv*2, num_output,
+                  kernel_size=1, stride=1, padding=0))
+            self.__setattr__(head, fc)
+
+    def forward(self, x):
+        x = self.base_model(x)
+        x = self.conv_compress(x)
+        x = self.deconv_layers(x)
+
+        ret = {}
+        for head in self.heads:
+            ret[head] = self.__getattr__(head)(x)
+
+        if self.deploy:
+            hm = ret['hm'].sigmoid_()
+            # hm = self.gassuian_filter(hm)
+            # hmax = nn.functional.max_pool2d(hm, (3, 3), stride=1, padding=1)
+            # keep = torch.le(hmax, hm)
+            # hm = hm * keep.float()
+            return torch.cat([hm, ret['wh'], ret['hps'], ret['reg']], dim=1)
+        else:
+            return [ret]
+
+    def init_weights(self, pretrained=True):
+        for _, m in self.named_modules():
+            if isinstance(m, nn.ConvTranspose2d):
+                print('=> init {}.weight as normal(0, 0.001)'.format(m))
+                print('=> init {}.bias as 0'.format(m))
+                nn.init.normal_(m.weight, std=0.001)
+                if self.deconv_with_bias:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Conv2d):
+                print('=> init {}.weight as kaiming_uniform_'.format(m))
+                nn.init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                print('=> init {}.weight as 1'.format(m))
+                print('=> init {}.bias as 0'.format(m))
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        if pretrained:
+            # model.load_state_dict(torch.load('squeezenet1_1-f364aa15.pth', map_location=lambda storage, loc: storage))
+            self.load_state_dict(model_zoo.load_url(model_urls['squeezenet1_1']), strict=False)
+
+        self.gassuian_filter.weight.data.copy_(torch.from_numpy(get_gauss_kernel(self.gaussian_filter_size, 3, 1).transpose(2, 3, 0, 1)))
+
+    def _get_deconv_cfg(self, deconv_kernel, index):
+        if deconv_kernel == 4:
+            padding = 1
+            output_padding = 0
+        elif deconv_kernel == 3:
+            padding = 1
+            output_padding = 1
+        elif deconv_kernel == 2:
+            padding = 0
+            output_padding = 0
+
+        return deconv_kernel, padding, output_padding
+
+    def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
+        assert num_layers == len(num_filters), \
+            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+        assert num_layers == len(num_kernels), \
+            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+
+        layers = []
+        for i in range(num_layers):
+            kernel, padding, output_padding = \
+                self._get_deconv_cfg(num_kernels[i], i)
+
+            planes = num_filters[i]
+            layers.append(
+                nn.ConvTranspose2d(
+                    in_channels=self.head_conv*4,
+                    out_channels=planes,
+                    kernel_size=kernel,
+                    stride=2,
+                    padding=padding,
+                    output_padding=output_padding,
+                    bias=self.deconv_with_bias,
+                    groups=planes))
+            # layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             layers.append(nn.ReLU(inplace=True))
             self.inplanes = planes
 
         return nn.Sequential(*layers)
 
 
-def get_squeeze_pose_net(heads, head_conv, multi_exp=0.50, num_layers=0, deploy=False, pretrained=False):
+def get_squeeze_pose_net(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=False):
     model = PoseSqueezeNet(heads, head_conv, multi_exp=multi_exp, deploy=deploy)
+    model.init_weights(pretrained)
+
+    return model
+
+
+def get_squeeze_pose_net_v1(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=False):
+    model = PoseSqueezeNetV1(heads, head_conv, multi_exp=multi_exp, deploy=deploy)
     model.init_weights(pretrained)
 
     return model
@@ -233,7 +383,7 @@ if __name__ == '__main__':
     batch_size = 1
     input_w, input_h = 192, 256
 
-    model = PoseSqueezeNet(heads, head_conv, multi_exp=0.50, deploy=True)
+    model = PoseSqueezeNetV1(heads, head_conv, multi_exp=0.750, deploy=True)
     model.init_weights(True)
     model.eval()
 

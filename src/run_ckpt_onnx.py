@@ -133,11 +133,67 @@ def build(opt):
     import pdb; pdb.set_trace()
 
 
+def eval(opt):
+    if opt.gpus[0] >= 0:
+        opt.device = torch.device('cuda')
+    else:
+        opt.device = torch.device('cpu')
+
+    print('Creating model...')
+    model = create_model(opt.arch, opt.heads, opt.head_conv)
+    model.deploy = True
+    model = load_model(model, opt.load_model)
+    model = model.to(opt.device)
+    model.eval()
+
+    image = cv2.imread(opt.demo)
+    height, width = image.shape[0:2]
+    inp_height, inp_width = opt.input_w, opt.input_w
+    resized_img = cv2.resize(image, (inp_width, inp_height))
+    inp_image = (resized_img / 255.).astype(np.float32)
+    inputs = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
+
+    output = model(torch.from_numpy(inputs))
+    output = output.detach().cpu().numpy()
+    hm = output[:, 0:1, :, :]
+    wh = output[:, 1:3, :, :]
+    kps = output[:, 3:31, :, :]
+    reg = output[:, 31:33, :, :]
+    hm_hp = output[:, 33:47, :, :]
+    hm_offset = output[:, 47:49, :, :]
+
+    output_h, output_w = hm.shape[2], hm.shape[3]
+    center_x, center_y, score = hm.argmax() % output_w, int(hm.argmax() / output_w), hm.max()
+    _wh = wh[0, :, center_y, center_x]
+    _reg = reg[0, :, center_y, center_x]
+    _kps = kps[0, :, center_y, center_x]
+
+    print([center_x, center_y, score])
+    print(_wh)
+    print(_reg)
+    print(_kps)
+
+    ori_h, ori_w = image.shape[0:2]
+    scale = 2
+    npimg = image.copy()
+    top_x = int((center_x + _reg[0] - _wh[0] / 2) / output_w * width)
+    top_y = int((center_y + _reg[1] - _wh[1] / 2) / output_h * height)
+    buttom_x = int((center_x + _reg[0] + _wh[0] / 2) / output_w * width)
+    buttom_y = int((center_y + _reg[1] + _wh[1] / 2) / output_h * height)
+    cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
+    for idx in range(14):
+        kp_x = int((_kps[idx*2] + center_x) / output_w * width)
+        kp_y = int((_kps[idx*2 + 1] + center_y) / output_h * height)
+        cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
+    cv2.imwrite('result-kp-no-hm_hp-center.png', npimg)
+
+    import pdb; pdb.set_trace()
 
 if __name__ == '__main__':
 
     opt = opts().init()
-    build(opt)
+    # build(opt)
+    eval(opt)
 
 
 
@@ -268,7 +324,6 @@ inp_image = ((resized_img - mean) / std).astype(np.float32)
    -20.987051    16.488102   198.52126      7.223912 ]]
 
 
-'''
 
 
 
@@ -677,3 +732,5 @@ if __name__ == '__main__':
     opt = opts().init()
     # main(opt)
     test_onnx(opt)
+
+'''

@@ -85,10 +85,11 @@ class AIChallengeKp(data.Dataset):
         # max_length = (img.shape[0] + img.shape[1]) // 2
         # max_length = int(abs(height - width) * 0.5 + min(height, width))
         max_length = int(abs(height - width) * 0.3 + min(height, width))
-        rot = 90 if height < width else 0
+        # rot = 90 if height < width else 0
+        rot = 0
 
         if np.random.random() < 0.5:
-            rot += int((np.random.random() - 0.5) * 10)
+            rot += int((np.random.random() - 0.5) * 30)
 
         flipped = False
         if np.random.random() < 0.5:
@@ -145,8 +146,6 @@ class AIChallengeKp(data.Dataset):
             if self.debug:
                 bbox_ = (bbox).astype(np.int32) * self.down_ratio
                 cv2.rectangle(inp_ori, (bbox_[0], bbox_[1]), (bbox_[2], bbox_[3]), (255, 0, 0), 2)
-                if index == 5:
-                    import pdb; pdb.set_trace()
                 # cv2.imwrite('demo_imgs/ai_challenge_kp_bbox_{}.png'.format(index), inp_ori)
 
             radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.5)
@@ -162,7 +161,7 @@ class AIChallengeKp(data.Dataset):
                 hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
                 reg_mask[k] = 0
 
-            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.85)
+            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.80)
             hp_radius = max(0, int(hp_radius))
             for j in range(num_joints):
                 if pts[j, 2] > 0:
@@ -223,6 +222,7 @@ class AIChallengeKp(data.Dataset):
 
 if __name__ == '__main__':
     # usage: python -m lib.datasets.ai_challenger_kp multi_pose --arch squeeze --aug_rot 0.5 --rotate 90
+    # rm -rf demo_imgs/ && mkdir demo_imgs
     from opts import opts
     opt = opts().init()
 

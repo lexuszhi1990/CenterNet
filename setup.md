@@ -172,8 +172,15 @@ android:
 
 python main.py multi_pose --exp_id squeeze_0.5_coco --arch squeeze --dataset coco_hp --batch_size 64  --lr 5e-3 --num_workers 2 --input_res 224 --down_ratio 2 --lr_step 30,60,90 --gpus 3 --debug 4
 
-python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge --arch squeeze --dataset ai_challenge --batch_size 64  --lr 5e-3 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --lr_step 30,60,90 --gpus 3
 
+### train ai challenge
+
+
+python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge --arch squeeze --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --lr_step 30,60,90 --gpus 3
+
+python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_v1 --arch squeezev1 --dataset ai_challenge --batch_size 64 --lr 1.25e-2 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --lr_step 30,60,90 --gpus 3
+
+python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --demo ../images/example-test.png --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge/model_best.pth --gpus -1
 
 ### test new dataset load
 
