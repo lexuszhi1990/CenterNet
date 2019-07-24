@@ -30,9 +30,11 @@ class AIChallengeKp(data.Dataset):
     std  = np.array([1, 1, 1], dtype=np.float32).reshape(1, 1, 3)
     flip_idx = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13]]
 
-    def __init__(self, opt, split, down_ratio=2, mse_loss=False, max_objs=5, debug=False):
+    def __init__(self, opt, split, mse_loss=False, max_objs=5, debug=False):
         super(AIChallengeKp, self).__init__()
-        self.down_ratio = down_ratio
+        self.down_ratio = opt.down_ratio
+        self.default_resolution = [opt.input_w, opt.input_h]
+
         self.mse_loss = mse_loss
         self.max_objs = max_objs
         self.split = split
@@ -89,7 +91,7 @@ class AIChallengeKp(data.Dataset):
         # rot = 0
 
         if np.random.random() < 0.5:
-            rot += int((np.random.random() - 0.5) * 30)
+            rot += int((np.random.random() - 0.5) * 10)
 
         flipped = False
         if np.random.random() < 0.5:
@@ -161,7 +163,7 @@ class AIChallengeKp(data.Dataset):
                 hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
                 reg_mask[k] = 0
 
-            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.70)
+            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.85)
             hp_radius = max(0, int(hp_radius))
             for j in range(num_joints):
                 if pts[j, 2] > 0:

@@ -175,7 +175,9 @@ python main.py multi_pose --exp_id squeeze_0.5_coco --arch squeeze --dataset coc
 
 ### train ai challenge
 
-python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_test --arch squeeze --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --lr_step 30,60,90 --gpus 3
+python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_test --arch res_18 --dataset ai_challenge --batch_size 16 --lr 1.25e-4 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 4 --lr_step 30,60,90 --gpus 3
+
+python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_test --arch squeeze --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 4 --lr_step 30,60,90 --gpus 3
 
 python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_v1 --arch squeezev1 --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 4 --input_res -1 --input_h 256 --input_w 192 --down_ratio 2 --lr_step 30,60,90 --gpus 3
 

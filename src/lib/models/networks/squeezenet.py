@@ -82,7 +82,6 @@ class PoseSqueezeNet(nn.Module):
             Fire(scale(512), scale(64), scale(256), scale(256)),
         )
         self.inplanes = scale(512)
-        self.conv_compress = nn.Conv2d(scale(512), head_conv, 1, 1, 0, bias=False)
 
         # self.deconv_layers = nn.PixelShuffle(4)
         # self.deconv_layers = nn.Sequential(
@@ -95,9 +94,9 @@ class PoseSqueezeNet(nn.Module):
         # )
 
         self.deconv_layers = self._make_deconv_layer(
-            3,
-            [head_conv, head_conv, head_conv],
-            [4, 4, 4],
+            2,
+            [head_conv*2, head_conv*2],
+            [4, 4],
         )
 
         self.gassuian_filter = nn.Conv2d(1, 1, (self.gaussian_filter_size, self.gaussian_filter_size), padding=(self.gaussian_filter_padding, self.gaussian_filter_padding), bias=False)
@@ -105,15 +104,14 @@ class PoseSqueezeNet(nn.Module):
         for head in sorted(self.heads):
             num_output = self.heads[head]
             fc = nn.Sequential(
-                # nn.Conv2d(head_conv, head_conv, kernel_size=3, padding=1, bias=True),
-                # nn.ReLU(inplace=True),
-                nn.Conv2d(head_conv, num_output,
+                nn.Conv2d(head_conv*2, head_conv*2, kernel_size=3, padding=1, bias=True),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(head_conv*2, num_output,
                   kernel_size=1, stride=1, padding=0))
             self.__setattr__(head, fc)
 
     def forward(self, x):
         x = self.base_model(x)
-        x = self.conv_compress(x)
         x = self.deconv_layers(x)
 
         ret = {}
@@ -211,16 +209,16 @@ class PoseSqueezeNet(nn.Module):
             planes = num_filters[i]
             layers.append(
                 nn.ConvTranspose2d(
-                    in_channels=self.head_conv,
+                    in_channels=self.inplanes,
                     out_channels=planes,
                     kernel_size=kernel,
                     stride=2,
                     padding=padding,
                     output_padding=output_padding,
                     bias=self.deconv_with_bias,
-                    groups=planes))
-            # layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
-            # layers.append(nn.ReLU(inplace=True))
+                    groups=planes//4))
+            layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             self.inplanes = planes
 
         return nn.Sequential(*layers)
@@ -369,17 +367,15 @@ class PoseSqueezeNetV1(nn.Module):
         return nn.Sequential(*layers)
 
 
-def get_squeeze_pose_net(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=False):
+def get_squeeze_pose_net(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=True):
     model = PoseSqueezeNet(heads, head_conv, multi_exp=multi_exp, deploy=deploy)
     model.init_weights(pretrained)
-
     return model
 
 
 def get_squeeze_pose_net_v1(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=False):
     model = PoseSqueezeNetV1(heads, head_conv, multi_exp=multi_exp, deploy=deploy)
     model.init_weights(pretrained)
-
     return model
 
 if __name__ == '__main__':
