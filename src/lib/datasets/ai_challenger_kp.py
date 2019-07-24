@@ -85,8 +85,8 @@ class AIChallengeKp(data.Dataset):
         # max_length = (img.shape[0] + img.shape[1]) // 2
         # max_length = int(abs(height - width) * 0.5 + min(height, width))
         max_length = int(abs(height - width) * 0.3 + min(height, width))
-        # rot = 90 if height < width else 0
-        rot = 0
+        rot = 90 if height < width else 0
+        # rot = 0
 
         if np.random.random() < 0.5:
             rot += int((np.random.random() - 0.5) * 30)
@@ -161,7 +161,7 @@ class AIChallengeKp(data.Dataset):
                 hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
                 reg_mask[k] = 0
 
-            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.80)
+            hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)), 0.70)
             hp_radius = max(0, int(hp_radius))
             for j in range(num_joints):
                 if pts[j, 2] > 0:

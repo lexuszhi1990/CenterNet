@@ -148,7 +148,7 @@ def eval(opt):
 
     image = cv2.imread(opt.demo)
     height, width = image.shape[0:2]
-    inp_height, inp_width = opt.input_w, opt.input_w
+    inp_height, inp_width = opt.input_h, opt.input_w
     resized_img = cv2.resize(image, (inp_width, inp_height))
     inp_image = (resized_img / 255.).astype(np.float32)
     inputs = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
@@ -161,20 +161,19 @@ def eval(opt):
     reg = output[:, 31:33, :, :]
     hm_hp = output[:, 33:47, :, :]
     hm_offset = output[:, 47:49, :, :]
-
     output_h, output_w = hm.shape[2], hm.shape[3]
     center_x, center_y, score = hm.argmax() % output_w, int(hm.argmax() / output_w), hm.max()
     _wh = wh[0, :, center_y, center_x]
     _reg = reg[0, :, center_y, center_x]
     _kps = kps[0, :, center_y, center_x]
+    _hm_hp = hm_hp[0, :, center_y, center_x]
+    _hm_offset = hm_offset[0, :, center_y, center_x]
 
     print([center_x, center_y, score])
     print(_wh)
     print(_reg)
     print(_kps)
 
-    ori_h, ori_w = image.shape[0:2]
-    scale = 2
     npimg = image.copy()
     top_x = int((center_x + _reg[0] - _wh[0] / 2) / output_w * width)
     top_y = int((center_y + _reg[1] - _wh[1] / 2) / output_h * height)
@@ -182,15 +181,33 @@ def eval(opt):
     buttom_y = int((center_y + _reg[1] + _wh[1] / 2) / output_h * height)
     cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
     for idx in range(14):
-        kp_x = int((_kps[idx*2] + center_x) / output_w * width)
-        kp_y = int((_kps[idx*2 + 1] + center_y) / output_h * height)
+        kp_x = int((_kps[idx*2] + center_x ) / output_w * width)
+        kp_y = int((_kps[idx*2 + 1] + center_y ) / output_h * height)
         cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
-    cv2.imwrite('result-kp-no-hm_hp-center.png', npimg)
+    cv2.imwrite('result-by-kp.png', npimg)
+
+    npimg = image.copy()
+    cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
+    for idx in range(14):
+        hp_tmp = hm_hp[0][idx]
+        center_x, center_y, score = hp_tmp.argmax() % output_w, int(hp_tmp.argmax() / output_w), hp_tmp.max()
+        kp_x = int(( center_x ) / output_w * width)
+        kp_y = int(( center_y ) / output_h * height)
+
+        cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
+    hm[0, :, center_y, center_x] = 0
+    cv2.imwrite('result-by-hm_hp.png', npimg)
 
     import pdb; pdb.set_trace()
 
-if __name__ == '__main__':
+    # hm_hp_outp = np.clip(hm_hp[0], 0, 1)
+    # kp_gausian = cv2.addWeighted(cv2.resize(resized_img, (output_w, output_h)).astype(np.float32), 0.2, np.repeat(hm_hp_outp.sum(axis=0).reshape(output_h, output_w, 1), 3, axis=2)*255, 0.7, 0)
+    # cv2.imwrite('result-kp-with-gaussion.png', kp_gausian)
 
+
+if __name__ == '__main__':
+    # usage:
+    #   python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --demo ../images/example-test.png --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge/model_best.pth --gpus -1
     opt = opts().init()
     # build(opt)
     eval(opt)

@@ -122,11 +122,19 @@ class PoseSqueezeNet(nn.Module):
 
         if self.deploy:
             hm = ret['hm'].sigmoid_()
-            # hm = self.gassuian_filter(hm)
-            # hmax = nn.functional.max_pool2d(hm, (3, 3), stride=1, padding=1)
-            # keep = torch.le(hmax, hm)
-            # hm = hm * keep.float()
-            return torch.cat([hm, ret['wh'], ret['hps'], ret['reg']], dim=1)
+            # _hm = self.gassuian_filter(hm)
+            # hmax = nn.functional.max_pool2d(_hm, (5, 5), stride=1, padding=2)
+            # keep = torch.le(hmax, _hm)
+            # hm = ret['hm'] * keep.float()
+
+            hm_hp = ret['hm_hp'].sigmoid_()
+            # _hm_hp = self.gassuian_filter(hm_hp)
+            # _hm_hp = hm_hp
+            # hm_hp_max = nn.functional.max_pool2d(_hm_hp, (3, 3), stride=1, padding=1)
+            # keep = torch.le(hm_hp_max, _hm_hp)
+            # hm_hp = hm_hp * keep.float()
+
+            return torch.cat([hm, ret['wh'], ret['hps'], ret['reg'], hm_hp, ret['hp_offset']], dim=1)
         else:
             return [ret]
 
@@ -354,7 +362,7 @@ class PoseSqueezeNetV1(nn.Module):
                     output_padding=output_padding,
                     bias=self.deconv_with_bias,
                     groups=planes))
-            # layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
+            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             layers.append(nn.ReLU(inplace=True))
             self.inplanes = planes
 
