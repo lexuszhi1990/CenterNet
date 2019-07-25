@@ -479,6 +479,7 @@ class PoseSqueezeNetV2(nn.Module):
         if pretrained:
             # model.load_state_dict(torch.load('squeezenet1_1-f364aa15.pth', map_location=lambda storage, loc: storage))
             self.load_state_dict(model_zoo.load_url(model_urls['squeezenet1_1']), strict=False)
+            print('load pretrained model from %s' % model_urls['squeezenet1_1'])
 
         self.gassuian_filter.weight.data.copy_(torch.from_numpy(get_gauss_kernel(self.gaussian_filter_size, 3, 1).transpose(2, 3, 0, 1)))
 
@@ -530,13 +531,13 @@ def get_squeeze_pose_net(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=F
     return model
 
 
-def get_squeeze_pose_net_v1(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=False):
+def get_squeeze_pose_net_v1(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=True):
     model = PoseSqueezeNetV1(heads, head_conv, multi_exp=multi_exp, deploy=deploy)
     model.init_weights(pretrained)
     return model
 
 
-def get_squeeze_pose_net_v2(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=False):
+def get_squeeze_pose_net_v2(heads, head_conv, multi_exp=1.0, num_layers=0, deploy=False, pretrained=True):
     model = PoseSqueezeNetV2(heads, head_conv, multi_exp=multi_exp, deploy=deploy)
     model.init_weights(pretrained)
     return model

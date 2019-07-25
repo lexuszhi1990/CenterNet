@@ -318,7 +318,7 @@ class opts(object):
                    'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes}
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
-    elif opt.task == 'multi_pose':
+    elif opt.task in ['multi_pose', 'easy_multi_pose']:
       # assert opt.dataset in ['coco_hp']
       opt.flip_idx = dataset.flip_idx
       opt.heads = {'hm': opt.num_classes, 'wh': 2, 'hps': 34}
@@ -367,6 +367,12 @@ class opts(object):
         'mean': [0, 0, 0], 'std': [1, 1, 1],
         'dataset': 'coco_hp', 'num_joints': 14,
         'flip_idx': [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13]]},
+      'easy_multi_pose': {
+        'default_resolution': [512, 512], 'num_classes': 1,
+        'mean': [0, 0, 0], 'std': [1, 1, 1],
+        'dataset': 'coco_hp', 'num_joints': 17,
+        'flip_idx': [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10],
+                     [11, 12], [13, 14], [15, 16]]},
     }
     class Struct:
       def __init__(self, entries):

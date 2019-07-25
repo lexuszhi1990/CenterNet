@@ -175,6 +175,8 @@ python main.py multi_pose --exp_id squeeze_0.5_coco --arch squeeze --dataset coc
 
 ### train ai challenge
 
+#### training
+
 python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_test --arch res_18 --dataset ai_challenge --batch_size 16 --lr 1.25e-4 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 4 --lr_step 30,60,90 --gpus 3
 
 python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_test --arch squeeze --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 2 --input_res -1 --input_h 256 --input_w 192 --down_ratio 4 --lr_step 30,60,90 --gpus 3
@@ -183,21 +185,31 @@ python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_v1 --arch squeezev
 
 python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_v2 --arch squeezev2 --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 4 --input_res -1 --input_h 256 --input_w 192 --down_ratio 4 --lr_step 30,60,90 --gpus 3
 
-python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_test/model_best.pth --gpus -1 --demo ../images/example-test.png
+python main.py easy_multi_pose --exp_id squeeze_1.0_easy_multi_pose --arch squeezev2 --dataset coco_hp --batch_size 32 --lr 1.25e-3 --num_workers 4 --input_res 512 --input_h 512 --input_w 512 --down_ratio 4 --num_epochs 230 --lr_step 120,180,210 --gpus 3
 
-python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeezev2 --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_v2/model_best.pth --gpus -1 --demo ../images/example-test.png
+
+#### run tests
 
 python run_ckpt_onnx.py multi_pose --input_res -1 --input_h 256 --input_w 256 --load_model ../models/multi_pose_hg_3x.pth --arch hourglass --gpus 3 --demo ../images/videos/test1
+
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch res_18 --load_model ../exp/ai_challenge/resnet_18_ai_challenge/model_best.pth --gpus 3 --demo ../images/videos/test1
+
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge/model_best.pth --gpus 3 --demo ../images/videos/test1
+
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeezev2 --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_v2/model_best.pth --gpus 3 --demo ../images/videos/test1
 
+
+#### generate videos
+
 ffmpeg -i test1.mp4 -r 30 -f image2 ../images/videos/test1/image-%4d.png
+
 ffmpeg -i ../images/videos/results_sqeezenet/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p sqeezenet.mp4
 ffmpeg -i ../images/videos/results_sqeezenetv2/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p sqeezenetv2.mp4
 ffmpeg -i ../images/videos/results_res18/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p res18.mp4
 ffmpeg -i ../images/videos/results_hourglass/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p hourglass.mp4
 ffmpeg -i ../images/videos/results_hourglass_256x256/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p hourglass_256x256.mp4
+
+
 
 ### test new dataset load
 

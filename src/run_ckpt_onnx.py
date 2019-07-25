@@ -145,7 +145,7 @@ def eval(opt):
     inp_image = (resized_img / 255.).astype(np.float32)
     inputs = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
 
-    output = model(torch.from_numpy(inputs))
+    output = model(torch.from_numpy(inputs).to(opt.device))
     if opt.task == 'ai_challenge':
         num_joints = 14
         output = output.detach().cpu().numpy()
@@ -222,7 +222,7 @@ def eval_dir(opt):
     model = model.to(opt.device)
     model.eval()
 
-    prefix = '../images/videos/results_sqeezenet'
+    prefix = '../images/videos/results_sqeezenetv2'
     assert os.path.isdir(opt.demo)
     imgs = os.listdir(opt.demo)
     for img in imgs:
@@ -301,8 +301,8 @@ if __name__ == '__main__':
         opt.device = torch.device('cpu')
 
     # build(opt)
-    # eval(opt)
-    eval_dir(opt)
+    eval(opt)
+    # eval_dir(opt)
 
 
 

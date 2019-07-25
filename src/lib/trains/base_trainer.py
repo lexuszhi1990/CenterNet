@@ -14,7 +14,7 @@ class ModleWithLoss(torch.nn.Module):
     super(ModleWithLoss, self).__init__()
     self.model = model
     self.loss = loss
-  
+
   def forward(self, batch):
     outputs = self.model(batch['input'])
     loss, loss_stats = self.loss(outputs, batch)
@@ -31,11 +31,11 @@ class BaseTrainer(object):
   def set_device(self, gpus, chunk_sizes, device):
     if len(gpus) > 1:
       self.model_with_loss = DataParallel(
-        self.model_with_loss, device_ids=gpus, 
+        self.model_with_loss, device_ids=gpus,
         chunk_sizes=chunk_sizes).to(device)
     else:
       self.model_with_loss = self.model_with_loss.to(device)
-    
+
     for state in self.optimizer.state.values():
       for k, v in state.items():
         if isinstance(v, torch.Tensor):
@@ -65,7 +65,7 @@ class BaseTrainer(object):
 
       for k in batch:
         if k != 'meta':
-          batch[k] = batch[k].to(device=opt.device, non_blocking=True)    
+          batch[k] = batch[k].to(device=opt.device, non_blocking=True)
       output, loss, loss_stats = model_with_loss(batch)
       loss = loss.mean()
       if phase == 'train':
@@ -87,22 +87,22 @@ class BaseTrainer(object):
           '|Net {bt.avg:.3f}s'.format(dt=data_time, bt=batch_time)
       if opt.print_iter > 0:
         if iter_id % opt.print_iter == 0:
-          print('{}/{}| {}'.format(opt.task, opt.exp_id, Bar.suffix)) 
+          print('{}/{}| {}'.format(opt.task, opt.exp_id, Bar.suffix))
       else:
         bar.next()
-      
+
       if opt.debug > 0:
         self.debug(batch, output, iter_id)
-      
+
       if opt.test:
         self.save_result(output, batch, results)
       del output, loss, loss_stats
-    
+
     bar.finish()
     ret = {k: v.avg for k, v in avg_loss_stats.items()}
     ret['time'] = bar.elapsed_td.total_seconds() / 60.
     return ret, results
-  
+
   def debug(self, batch, output, iter_id):
     raise NotImplementedError
 
@@ -111,7 +111,7 @@ class BaseTrainer(object):
 
   def _get_losses(self, opt):
     raise NotImplementedError
-  
+
   def val(self, epoch, data_loader):
     return self.run_epoch('val', epoch, data_loader)
 
