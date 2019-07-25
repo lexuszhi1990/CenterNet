@@ -332,7 +332,7 @@ class opts(object):
       if opt.reg_hp_offset:
         opt.heads.update({'hp_offset': 2})
       opt.num_joints = dataset.num_joints
-    elif opt.task == 'ai_challenge':
+    elif opt.task == 'ai_challenge' or opt.task == 'ai_challenge_hp':
       # assert opt.dataset in ['coco_hp']
       opt.flip_idx = dataset.flip_idx
       opt.heads = {'hm': opt.num_classes, 'wh': 2, 'hps': 28}
@@ -370,12 +370,20 @@ class opts(object):
         'mean': [0, 0, 0], 'std': [1, 1, 1],
         'dataset': 'coco_hp', 'num_joints': 14,
         'flip_idx': [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13]]},
+<<<<<<< HEAD
       'easy_multi_pose': {
         'default_resolution': [512, 512], 'num_classes': 1,
         'mean': [0, 0, 0], 'std': [1, 1, 1],
         'dataset': 'coco_hp', 'num_joints': 17,
         'flip_idx': [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10],
                      [11, 12], [13, 14], [15, 16]]},
+=======
+      'ai_challenge_hp': {
+        'default_resolution': [224, 224], 'num_classes': 1,
+        'mean': [0, 0, 0], 'std': [1, 1, 1],
+        'dataset': 'coco_hp', 'num_joints': 14,
+        'flip_idx': [[0, 3], [1, 4], [2, 5], [6, 9], [7, 10], [8, 11]]},
+>>>>>>> 8d4b10136c9f1e95753912d752fb3ef72638696d
     }
     class Struct:
       def __init__(self, entries):
