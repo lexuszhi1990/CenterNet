@@ -84,6 +84,8 @@ class opts(object):
                              help='learning rate for batch size 32.')
     self.parser.add_argument('--lr_step', type=str, default='90,120',
                              help='drop learning rate by 10.')
+    self.parser.add_argument('--num_stacks', type=int, default=-1,
+                             help='model stacks')
     self.parser.add_argument('--num_epochs', type=int, default=140,
                              help='total training epochs.')
     self.parser.add_argument('--batch_size', type=int, default=32,
@@ -246,7 +248,8 @@ class opts(object):
     if opt.head_conv == -1: # init default head_conv
       opt.head_conv = 256 if 'dla' in opt.arch else 64
     opt.pad = 127 if 'hourglass' in opt.arch else 31
-    opt.num_stacks = 2 if opt.arch == 'hourglass' else 1
+    if opt.num_stacks == -1:
+        opt.num_stacks = 2 if opt.arch == 'hourglass' else 1
 
     if opt.trainval:
       opt.val_intervals = 100000000

@@ -301,8 +301,8 @@ if __name__ == '__main__':
         opt.device = torch.device('cpu')
 
     # build(opt)
-    eval(opt)
-    # eval_dir(opt)
+    # eval(opt)
+    eval_dir(opt)
 
 
 
