@@ -548,7 +548,7 @@ if __name__ == '__main__':
     batch_size = 1
     input_w, input_h = 192, 256
 
-    model = PoseSqueezeNetV2(heads, head_conv, multi_exp=0.750, deploy=True)
+    model = PoseSqueezeNetV2(heads, head_conv, multi_exp=1.0, deploy=True)
     model.init_weights(True)
     model.eval()
 

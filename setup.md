@@ -181,6 +181,8 @@ python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_test --arch squeez
 
 python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_v1 --arch squeezev1 --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 4 --input_res -1 --input_h 256 --input_w 192 --down_ratio 4 --lr_step 30,60,90 --gpus 3
 
+python main.py ai_challenge --exp_id squeeze_0.5_ai_challenge_v2 --arch squeezev2 --dataset ai_challenge --batch_size 64 --lr 5e-3 --num_workers 4 --input_res -1 --input_h 256 --input_w 192 --down_ratio 4 --lr_step 30,60,90 --gpus 3
+
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_test/model_best.pth --gpus -1 --demo ../images/example-test.png
 
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch res_18 --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_test/model_best.pth --gpus -1 --demo ../images/example-test.png
