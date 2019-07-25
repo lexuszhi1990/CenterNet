@@ -439,20 +439,23 @@ class PoseSqueezeNetV2(nn.Module):
         x = self.base_model(x)
         x = self.deconv_layers(x)
         output_1 = self.fc_1(x)
-        x = self.fc_2(torch.cat([output_1, x], dim=1))
+        output_2 = self.fc_2(torch.cat([output_1, x], dim=1))
 
         if self.deploy:
-            return x
+            return output_2
         else:
-            result = {}
-            start = 0
-            for key,value in self.heads.items():
-                end = start + value
-                x_splited = x.split(1, dim=1)
-                result[key] = torch.cat(x_splited[start:end], dim=1)
-                # print("{} {}:{}".format(key, start, end))
-                start = end
-            return [result]
+            ret = []
+            for res in [output_1, output_2]:
+                result = {}
+                start = 0
+                for key,value in self.heads.items():
+                    end = start + value
+                    x_splited = res.split(1, dim=1)
+                    result[key] = torch.cat(x_splited[start:end], dim=1)
+                    # print("{} {}:{}".format(key, start, end))
+                    start = end
+                ret.append(result)
+            return ret
 
     def init_weights(self, pretrained=True):
         for _, m in self.named_modules():

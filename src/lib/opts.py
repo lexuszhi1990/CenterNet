@@ -328,6 +328,7 @@ class opts(object):
         opt.heads.update({'hm_hp': 17})
       if opt.reg_hp_offset:
         opt.heads.update({'hp_offset': 2})
+      opt.num_joints = dataset.num_joints
     elif opt.task == 'ai_challenge':
       # assert opt.dataset in ['coco_hp']
       opt.flip_idx = dataset.flip_idx
@@ -338,6 +339,7 @@ class opts(object):
         opt.heads.update({'hm_hp': 14})
       if opt.reg_hp_offset:
         opt.heads.update({'hp_offset': 2})
+      opt.num_joints = dataset.num_joints
     else:
       assert 0, 'task not defined!'
     print('heads', opt.heads)

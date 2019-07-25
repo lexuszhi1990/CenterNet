@@ -2,7 +2,7 @@
 
 
 import _init_paths
-
+import os
 import cv2
 import numpy as np
 import scipy.stats as st
@@ -61,11 +61,6 @@ def pre_process(im_path, mean, std, desired_size=512, down_ratio=4):
     return images, meta
 
 def build(opt):
-    if opt.gpus[0] >= 0:
-        opt.device = torch.device('cuda')
-    else:
-        opt.device = torch.device('cpu')
-
     print('Creating model...')
     model = create_model(opt.arch, opt.heads, opt.head_conv)
     model.deploy = True
@@ -73,10 +68,15 @@ def build(opt):
     model = model.to(opt.device)
     model.eval()
 
-    inputs, meta = pre_process(opt.demo, opt.mean, opt.std)
-    output = model(torch.from_numpy(inputs))
+    image = cv2.imread(opt.demo)
+    height, width = image.shape[0:2]
+    inp_height, inp_width = opt.input_h, opt.input_w
+    resized_img = cv2.resize(image, (inp_width, inp_height))
+    inp_image = (resized_img / 255.).astype(np.float32)
+    inputs = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
 
-    torch.onnx.export(model, torch.from_numpy(inputs), "example.onnx", verbose=False, input_names=["data"], output_names=["output"])
+    output = model(torch.from_numpy(inputs).to(opt.device))
+    torch.onnx.export(model, torch.from_numpy(inputs).to(opt.device), "example.onnx", verbose=False, input_names=["data"], output_names=["output"])
 
     import os; os.system('python3 -m onnxsim example.onnx example-sim.onnx')
 
@@ -92,12 +92,22 @@ def build(opt):
     result = session.run(None, {input_name: inputs})
 
     output = output.detach().cpu().numpy()
-    hm = output[:, 0:1, :, :]
-    wh = output[:, 1:3, :, :]
-    kps = output[:, 3:37, :, :]
-    reg = output[:, 37:39, :, :]
-    # hm_hp = output[:, 39:56, :, :]
-    # hp_offset = output[:, 56:58, :, :]
+    if opt.task == 'ai_challenge':
+        hm = output[:, 0:1, :, :]
+        wh = output[:, 1:3, :, :]
+        kps = output[:, 3:31, :, :]
+        reg = output[:, 31:33, :, :]
+        hm_hp = output[:, 33:47, :, :]
+        hm_offset = output[:, 47:49, :, :]
+        num_joints = 14
+    else:
+        hm = output[:, 0:1, :, :]
+        wh = output[:, 1:3, :, :]
+        kps = output[:, 3:37, :, :]
+        reg = output[:, 37:39, :, :]
+        hm_hp = output[:, 39:56, :, :]
+        hp_offset = output[:, 56:58, :, :]
+        num_joints = 17
 
     output_h, output_w = hm.shape[2], hm.shape[3]
     center_x, center_y, score = hm.argmax() % output_w, int(hm.argmax() / output_w), hm.max()
@@ -111,24 +121,6 @@ def build(opt):
     print(_kps)
     print("mean correlation error is : %f" % np.mean(output - result[0]))
     print("max correlation error is : %f" % np.max(output - result[0]))
-
-
-    image = cv2.imread(opt.demo)
-    ori_h, ori_w = image.shape[0:2]
-    scale = 4
-    resized_img = cv2.resize(image, (512, 512))
-    npimg = resized_img.copy()
-
-    top_x = int(center_x + _reg[0] - _wh[0] / 2) * scale
-    top_y = int(center_y + _reg[1] - _wh[1] / 2) * scale
-    buttom_x = int(center_x + _reg[0] + _wh[0] / 2) * scale
-    buttom_y = int(center_y + _reg[1] + _wh[1] / 2) * scale
-    cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
-    for idx in range(17):
-        kp_x = _kps[idx*2] + center_x
-        kp_y = _kps[idx*2 + 1] + center_y
-        cv2.circle(npimg, (int(kp_x * 4), int(kp_y * 4)), 2, (0, 0, 255), 2)
-    cv2.imwrite('result-kp-no-hm_hp-center.png', npimg)
 
     import pdb; pdb.set_trace()
 
@@ -154,13 +146,32 @@ def eval(opt):
     inputs = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
 
     output = model(torch.from_numpy(inputs))
-    output = output.detach().cpu().numpy()
-    hm = output[:, 0:1, :, :]
-    wh = output[:, 1:3, :, :]
-    kps = output[:, 3:31, :, :]
-    reg = output[:, 31:33, :, :]
-    hm_hp = output[:, 33:47, :, :]
-    hm_offset = output[:, 47:49, :, :]
+    if opt.task == 'ai_challenge':
+        num_joints = 14
+        output = output.detach().cpu().numpy()
+        hm = output[:, 0:1, :, :]
+        wh = output[:, 1:3, :, :]
+        kps = output[:, 3:31, :, :]
+        reg = output[:, 31:33, :, :]
+        hm_hp = output[:, 33:47, :, :]
+        hm_offset = output[:, 47:49, :, :]
+    else:
+        num_joints = 17
+        _output = output[-1]
+        hm = _output['hm'].detach().cpu().numpy()
+        wh = _output['wh'].detach().cpu().numpy()
+        kps = _output['hps'].detach().cpu().numpy()
+        reg = _output['reg'].detach().cpu().numpy()
+        hm_hp = _output['hm_hp'].detach().cpu().numpy()
+        hm_offset = _output['hp_offset'].detach().cpu().numpy()
+
+        # hm = output[:, 0:1, :, :]
+        # wh = output[:, 1:3, :, :]
+        # kps = output[:, 3:37, :, :]
+        # reg = output[:, 37:39, :, :]
+        # hm_hp = output[:, 39:56, :, :]
+        # hp_offset = output[:, 56:58, :, :]
+
     output_h, output_w = hm.shape[2], hm.shape[3]
     center_x, center_y, score = hm.argmax() % output_w, int(hm.argmax() / output_w), hm.max()
     _wh = wh[0, :, center_y, center_x]
@@ -180,7 +191,7 @@ def eval(opt):
     buttom_x = int((center_x + _reg[0] + _wh[0] / 2) / output_w * width)
     buttom_y = int((center_y + _reg[1] + _wh[1] / 2) / output_h * height)
     cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
-    for idx in range(14):
+    for idx in range(num_joints):
         kp_x = int((_kps[idx*2] + center_x + _hm_offset[0] ) / output_w * width)
         kp_y = int((_kps[idx*2 + 1] + center_y + _hm_offset[1] ) / output_h * height)
         cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
@@ -188,14 +199,12 @@ def eval(opt):
 
     npimg = image.copy()
     cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
-    for idx in range(14):
+    for idx in range(num_joints):
         hp_tmp = hm_hp[0][idx]
         center_x, center_y, score = hp_tmp.argmax() % output_w, int(hp_tmp.argmax() / output_w), hp_tmp.max()
         kp_x = int(( center_x ) / output_w * width)
         kp_y = int(( center_y ) / output_h * height)
         cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
-
-    hm[0, :, center_y, center_x] = 0
     cv2.imwrite('result-by-hm_hp.png', npimg)
 
     import pdb; pdb.set_trace()
@@ -204,13 +213,96 @@ def eval(opt):
     # kp_gausian = cv2.addWeighted(cv2.resize(resized_img, (output_w, output_h)).astype(np.float32), 0.2, np.repeat(hm_hp_outp.sum(axis=0).reshape(output_h, output_w, 1), 3, axis=2)*255, 0.7, 0)
     # cv2.imwrite('result-kp-with-gaussion.png', kp_gausian)
 
+def eval_dir(opt):
+    num_joints = opt.num_joints
+    print('Creating model...')
+    model = create_model(opt.arch, opt.heads, opt.head_conv)
+    model.deploy = False
+    model = load_model(model, opt.load_model)
+    model = model.to(opt.device)
+    model.eval()
+
+    prefix = '../images/videos/results_sqeezenetv2'
+    assert os.path.isdir(opt.demo)
+    imgs = os.listdir(opt.demo)
+    for img in imgs:
+
+        image = cv2.imread(os.path.join(opt.demo, img))
+        height, width = image.shape[0:2]
+        inp_height, inp_width = opt.input_h, opt.input_w
+        resized_img = cv2.resize(image, (inp_width, inp_height))
+        inp_image = (resized_img / 255.).astype(np.float32)
+        inputs = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
+
+        output = model(torch.from_numpy(inputs).to(opt.device))
+        _output = output[-1]
+        hm = _output['hm'].detach().cpu().numpy()
+        wh = _output['wh'].detach().cpu().numpy()
+        hps = _output['hps'].detach().cpu().numpy()
+        reg = _output['reg'].detach().cpu().numpy()
+        hm_hp = _output['hm_hp'].detach().cpu().numpy()
+        hp_offset = _output['hp_offset'].detach().cpu().numpy()
+
+        output_h, output_w = hm.shape[2], hm.shape[3]
+        center_x, center_y, score = hm.argmax() % output_w, int(hm.argmax() / output_w), hm.max()
+        _wh = wh[0, :, center_y, center_x]
+        _reg = reg[0, :, center_y, center_x]
+        _hps = hps[0, :, center_y, center_x]
+        _hm_hp = hm_hp[0, :, center_y, center_x]
+        _hp_offset = hp_offset[0, :, center_y, center_x]
+
+        print([center_x, center_y, score])
+        print(_wh)
+        print(_reg)
+        print(_hps)
+
+        npimg = image.copy()
+        top_x = int((center_x + _reg[0] - _wh[0] / 2) / output_w * width)
+        top_y = int((center_y + _reg[1] - _wh[1] / 2) / output_h * height)
+        buttom_x = int((center_x + _reg[0] + _wh[0] / 2) / output_w * width)
+        buttom_y = int((center_y + _reg[1] + _wh[1] / 2) / output_h * height)
+        cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
+        for idx in range(num_joints):
+            kp_x = int((_hps[idx*2] + center_x + _hp_offset[0] ) / output_w * width)
+            kp_y = int((_hps[idx*2 + 1] + center_y + _hp_offset[1] ) / output_h * height)
+            cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
+        cv2.imwrite('result-by-kp.png', npimg)
+        cv2.imwrite(os.path.join(prefix, "kp"+img), npimg)
+
+        npimg = image.copy()
+        cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
+        for idx in range(num_joints):
+            hp_tmp = hm_hp[0][idx]
+            center_x, center_y, score = hp_tmp.argmax() % output_w, int(hp_tmp.argmax() / output_w), hp_tmp.max()
+            kp_x = int(( center_x ) / output_w * width)
+            kp_y = int(( center_y ) / output_h * height)
+            cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
+        cv2.imwrite('result-by-hm_hp.png', npimg)
+        cv2.imwrite(os.path.join(prefix, "hm_hp"+img), npimg)
+
+    import pdb; pdb.set_trace()
+
+    # hm_hp_outp = np.clip(hm_hp[0], 0, 1)
+    # kp_gausian = cv2.addWeighted(cv2.resize(resized_img, (output_w, output_h)).astype(np.float32), 0.2, np.repeat(hm_hp_outp.sum(axis=0).reshape(output_h, output_w, 1), 3, axis=2)*255, 0.7, 0)
+    # cv2.imwrite('result-kp-with-gaussion.png', kp_gausian)
+
+
 
 if __name__ == '__main__':
     # usage:
-    #   python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --demo ../images/example-test.png --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge/model_best.pth --gpus -1
+    #   python run_ckpt_onnx.py ai_challenge --gpus -1 --input_res -1 --input_h 256 --input_w 192 --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge/model_best.pth --demo ../images/example-test.png
+    #   python run_ckpt_onnx.py ai_challenge --gpus -1 --input_res -1 --input_h 256 --input_w 192 --arch squeezev1 --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_v1/model_best.pth --demo ../images/example-test.png
+
     opt = opts().init()
-    # build(opt)
-    eval(opt)
+    os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
+    if opt.gpus[0] >= 0:
+        opt.device = torch.device('cuda')
+    else:
+        opt.device = torch.device('cpu')
+
+    build(opt)
+    # eval(opt)
+    # eval_dir(opt)
 
 
 

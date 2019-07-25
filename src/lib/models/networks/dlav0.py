@@ -556,16 +556,16 @@ class DLASeg(nn.Module):
                   nn.Conv2d(channels[self.first_level], head_conv,
                     kernel_size=3, padding=1, bias=True),
                   nn.ReLU(inplace=True),
-                  nn.Conv2d(head_conv, classes, 
-                    kernel_size=1, stride=1, 
+                  nn.Conv2d(head_conv, classes,
+                    kernel_size=1, stride=1,
                     padding=0, bias=True))
                 if 'hm' in head:
                     fc[-1].bias.data.fill_(-2.19)
                 else:
                     fill_fc_weights(fc)
             else:
-                fc = nn.Conv2d(channels[self.first_level], classes, 
-                  kernel_size=1, stride=1, 
+                fc = nn.Conv2d(channels[self.first_level], classes,
+                  kernel_size=1, stride=1,
                   padding=0, bias=True)
                 if 'hm' in head:
                     fc.bias.data.fill_(-2.19)
@@ -586,7 +586,7 @@ class DLASeg(nn.Module):
             up = Identity()
         self.up = up
         self.softmax = nn.LogSoftmax(dim=1)
-        
+
 
         for m in self.fc.modules():
             if isinstance(m, nn.Conv2d):
@@ -639,7 +639,7 @@ def dla169up(classes, pretrained_base=None, **kwargs):
     return model
 '''
 
-def get_pose_net(num_layers, heads, add_conv=256, down_ratio=4):
+def get_pose_net(num_layers, heads, add_conv=256, down_ratio=4, head_conv=None):
   model = DLASeg('dla{}'.format(num_layers), heads,
                  pretrained=True,
                  down_ratio=down_ratio,
