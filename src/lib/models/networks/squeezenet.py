@@ -223,7 +223,6 @@ class PoseSqueezeNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-
 class PoseSqueezeNetV1(nn.Module):
     def __init__(self, heads, head_conv=64, deploy=False, multi_exp=1.0, **kwargs):
         self.head_conv = head_conv
@@ -252,8 +251,6 @@ class PoseSqueezeNetV1(nn.Module):
             Fire(scale(512), scale(64), scale(256), scale(256)),
         )
         self.inplanes = scale(512)
-        self.conv_compress = nn.Conv2d(scale(512), head_conv*4, 1, 1, 0, bias=False)
-
         # self.deconv_layers = nn.PixelShuffle(4)
         # self.deconv_layers = nn.Sequential(
         #     nn.PixelShuffle(2),
@@ -263,14 +260,11 @@ class PoseSqueezeNetV1(nn.Module):
         #     nn.Upsample(scale_factor=2, mode='nearest'),
         #     nn.Upsample(scale_factor=2, mode='nearest')
         # )
-
         self.deconv_layers = self._make_deconv_layer(
-            3,
-            [head_conv*4, head_conv*4, head_conv*2],
-            [4, 4, 4],
+            2,
+            [head_conv*2, head_conv*2],
+            [4, 4],
         )
-
-        self.gassuian_filter = nn.Conv2d(1, 1, (self.gaussian_filter_size, self.gaussian_filter_size), padding=(self.gaussian_filter_padding, self.gaussian_filter_padding), bias=False)
 
         for head in sorted(self.heads):
             num_output = self.heads[head]
@@ -280,10 +274,10 @@ class PoseSqueezeNetV1(nn.Module):
                 nn.Conv2d(head_conv*2, num_output,
                   kernel_size=1, stride=1, padding=0))
             self.__setattr__(head, fc)
+        self.gassuian_filter = nn.Conv2d(1, 1, (self.gaussian_filter_size, self.gaussian_filter_size), padding=(self.gaussian_filter_padding, self.gaussian_filter_padding), bias=False)
 
     def forward(self, x):
         x = self.base_model(x)
-        x = self.conv_compress(x)
         x = self.deconv_layers(x)
 
         ret = {}
@@ -292,11 +286,19 @@ class PoseSqueezeNetV1(nn.Module):
 
         if self.deploy:
             hm = ret['hm'].sigmoid_()
-            # hm = self.gassuian_filter(hm)
-            # hmax = nn.functional.max_pool2d(hm, (3, 3), stride=1, padding=1)
-            # keep = torch.le(hmax, hm)
-            # hm = hm * keep.float()
-            return torch.cat([hm, ret['wh'], ret['hps'], ret['reg']], dim=1)
+            # _hm = self.gassuian_filter(hm)
+            # hmax = nn.functional.max_pool2d(_hm, (5, 5), stride=1, padding=2)
+            # keep = torch.le(hmax, _hm)
+            # hm = ret['hm'] * keep.float()
+
+            hm_hp = ret['hm_hp'].sigmoid_()
+            # _hm_hp = self.gassuian_filter(hm_hp)
+            # _hm_hp = hm_hp
+            # hm_hp_max = nn.functional.max_pool2d(_hm_hp, (3, 3), stride=1, padding=1)
+            # keep = torch.le(hm_hp_max, _hm_hp)
+            # hm_hp = hm_hp * keep.float()
+
+            return torch.cat([hm, ret['wh'], ret['hps'], ret['reg'], hm_hp, ret['hp_offset']], dim=1)
         else:
             return [ret]
 
@@ -352,7 +354,7 @@ class PoseSqueezeNetV1(nn.Module):
             planes = num_filters[i]
             layers.append(
                 nn.ConvTranspose2d(
-                    in_channels=self.head_conv*4,
+                    in_channels=self.inplanes,
                     out_channels=planes,
                     kernel_size=kernel,
                     stride=2,
@@ -360,8 +362,8 @@ class PoseSqueezeNetV1(nn.Module):
                     output_padding=output_padding,
                     bias=self.deconv_with_bias,
                     groups=planes))
-            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             self.inplanes = planes
 
         return nn.Sequential(*layers)
@@ -387,7 +389,7 @@ if __name__ == '__main__':
     batch_size = 1
     input_w, input_h = 192, 256
 
-    model = PoseSqueezeNetV1(heads, head_conv, multi_exp=0.750, deploy=True)
+    model = PoseSqueezeNetV1(heads, head_conv, multi_exp=0.50, deploy=True)
     model.init_weights(True)
     model.eval()
 

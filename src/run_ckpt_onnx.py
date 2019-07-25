@@ -181,8 +181,8 @@ def eval(opt):
     buttom_y = int((center_y + _reg[1] + _wh[1] / 2) / output_h * height)
     cv2.rectangle(npimg, (top_x, top_y), (buttom_x, buttom_y), (255, 0, 0), 2)
     for idx in range(14):
-        kp_x = int((_kps[idx*2] + center_x ) / output_w * width)
-        kp_y = int((_kps[idx*2 + 1] + center_y ) / output_h * height)
+        kp_x = int((_kps[idx*2] + center_x + _hm_offset[0] ) / output_w * width)
+        kp_y = int((_kps[idx*2 + 1] + center_y + _hm_offset[1] ) / output_h * height)
         cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
     cv2.imwrite('result-by-kp.png', npimg)
 
@@ -193,8 +193,8 @@ def eval(opt):
         center_x, center_y, score = hp_tmp.argmax() % output_w, int(hp_tmp.argmax() / output_w), hp_tmp.max()
         kp_x = int(( center_x ) / output_w * width)
         kp_y = int(( center_y ) / output_h * height)
-
         cv2.circle(npimg, (kp_x, kp_y), 2, (0, 0, 255), 2)
+
     hm[0, :, center_y, center_x] = 0
     cv2.imwrite('result-by-hm_hp.png', npimg)
 

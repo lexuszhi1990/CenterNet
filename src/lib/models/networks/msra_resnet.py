@@ -106,10 +106,11 @@ class Bottleneck(nn.Module):
 
 class PoseResNet(nn.Module):
 
-    def __init__(self, block, layers, heads, head_conv, **kwargs):
+    def __init__(self, block, layers, heads, head_conv, deploy=False, **kwargs):
         self.inplanes = 64
         self.deconv_with_bias = False
         self.heads = heads
+        self.deploy = deploy
 
         super(PoseResNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
@@ -137,7 +138,7 @@ class PoseResNet(nn.Module):
                 nn.Conv2d(256, head_conv,
                   kernel_size=3, padding=1, bias=True),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(head_conv, num_output, 
+                nn.Conv2d(head_conv, num_output,
                   kernel_size=1, stride=1, padding=0))
           else:
             fc = nn.Conv2d(
@@ -223,7 +224,25 @@ class PoseResNet(nn.Module):
         ret = {}
         for head in self.heads:
             ret[head] = self.__getattr__(head)(x)
-        return [ret]
+
+        if self.deploy:
+            hm = ret['hm'].sigmoid_()
+            # _hm = self.gassuian_filter(hm)
+            # hmax = nn.functional.max_pool2d(_hm, (5, 5), stride=1, padding=2)
+            # keep = torch.le(hmax, _hm)
+            # hm = ret['hm'] * keep.float()
+
+            hm_hp = ret['hm_hp'].sigmoid_()
+            # _hm_hp = self.gassuian_filter(hm_hp)
+            # _hm_hp = hm_hp
+            # hm_hp_max = nn.functional.max_pool2d(_hm_hp, (3, 3), stride=1, padding=1)
+            # keep = torch.le(hm_hp_max, _hm_hp)
+            # hm_hp = hm_hp * keep.float()
+
+            return torch.cat([hm, ret['wh'], ret['hps'], ret['reg'], hm_hp, ret['hp_offset']], dim=1)
+        else:
+            return [ret]
+
 
     def init_weights(self, num_layers, pretrained=True):
         if pretrained:
