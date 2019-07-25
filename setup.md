@@ -187,16 +187,17 @@ python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 
 
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeezev2 --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_v2/model_best.pth --gpus -1 --demo ../images/example-test.png
 
-
-python run_ckpt_onnx.py multi_pose --load_model ../models/multi_pose_hg_3x.pth --arch hourglass --gpus -1 --demo ../images/example-test.png
+python run_ckpt_onnx.py multi_pose --input_res -1 --input_h 256 --input_w 256 --load_model ../models/multi_pose_hg_3x.pth --arch hourglass --gpus 3 --demo ../images/videos/test1
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch res_18 --load_model ../exp/ai_challenge/resnet_18_ai_challenge/model_best.pth --gpus 3 --demo ../images/videos/test1
+python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeeze --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge/model_best.pth --gpus 3 --demo ../images/videos/test1
 python run_ckpt_onnx.py ai_challenge --input_res -1 --input_h 256 --input_w 192 --arch squeezev2 --load_model ../exp/ai_challenge/squeeze_0.5_ai_challenge_v2/model_best.pth --gpus 3 --demo ../images/videos/test1
 
-
 ffmpeg -i test1.mp4 -r 30 -f image2 ../images/videos/test1/image-%4d.png
+ffmpeg -i ../images/videos/results_sqeezenet/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p sqeezenet.mp4
 ffmpeg -i ../images/videos/results_sqeezenetv2/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p sqeezenetv2.mp4
 ffmpeg -i ../images/videos/results_res18/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p res18.mp4
 ffmpeg -i ../images/videos/results_hourglass/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p hourglass.mp4
+ffmpeg -i ../images/videos/results_hourglass_256x256/kpimage-%4d.png -vf "fps=30" -pix_fmt yuv420p hourglass_256x256.mp4
 
 ### test new dataset load
 

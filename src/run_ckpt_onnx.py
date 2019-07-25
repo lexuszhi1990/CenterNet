@@ -222,7 +222,7 @@ def eval_dir(opt):
     model = model.to(opt.device)
     model.eval()
 
-    prefix = '../images/videos/results_sqeezenetv2'
+    prefix = '../images/videos/results_sqeezenet'
     assert os.path.isdir(opt.demo)
     imgs = os.listdir(opt.demo)
     for img in imgs:
@@ -300,9 +300,9 @@ if __name__ == '__main__':
     else:
         opt.device = torch.device('cpu')
 
-    build(opt)
+    # build(opt)
     # eval(opt)
-    # eval_dir(opt)
+    eval_dir(opt)
 
 
 
